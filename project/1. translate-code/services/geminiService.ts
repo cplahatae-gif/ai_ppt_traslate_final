@@ -34,14 +34,22 @@ Translate an array of Korean text fragments into professional English while STRI
 # Critical Rules
 1. **One-to-One Mapping**: The input array has ${batch.length} items. The output MUST have exactly ${batch.length} items.
 2. **Order Preservation**: Do NOT reorder, merge, or split items.
-3. **Tag Preservation**: Keep all <b>, </b>, <i>, </i> tags in their relative positions.
+3. **Tag Preservation - CRITICAL**: 
+    - Keep all <b>, </b>, <i>, </i> tags in their EXACT relative positions.
+    - If the original text has NO tags, the translation MUST have NO tags.
+    - If the original has <b>only part</b> bolded, keep ONLY that part bolded.
+    - Do NOT add new tags that don't exist in the original.
+    - Do NOT remove existing tags from the original.
 4. **Glossary & Style**: 
     - Use "Electric Shock" instead of "Electrical Shock".
     - Use "Accident Summary" instead of "Accident Overview".
+    - Use "Anseong Plant" instead of "Anseong Site" for 안성 사업장/현장.
+    - Use "Plant" instead of "Site" for 사업장/현장 in company context.
+    - Use "Attendees" instead of "Participants" for 참석자.
     - Use **Title Case** for headers/titles (e.g., "Accident Summary").
     - Use **Sentence case** for body text.
 5. **Conciseness**: Prefer concise translations where possible to fit in slides.
-6. **Emphasis**: If a text looks like a title or header (e.g., short, no punctuation), wrap it in <b> tags if not already bold.
+6. **Roman Numerals**: Convert full-width roman numerals to half-width (Ⅰ→I, Ⅱ→II, Ⅲ→III, Ⅳ→IV, Ⅴ→V).
 `;
 
             if (promptInstruction?.trim()) {
@@ -55,7 +63,7 @@ Translate an array of Korean text fragments into professional English while STRI
             const prompt = `Translate these ${batch.length} items to English:\n${JSON.stringify(batch)}`;
 
             const response = await ai.models.generateContent({
-                model: 'gemini-3.0-flash',
+                model: 'gemini-3-flash-preview',
                 contents: prompt,
                 config: {
                     systemInstruction: systemInstruction,

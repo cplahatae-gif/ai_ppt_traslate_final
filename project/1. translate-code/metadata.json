@@ -1,0 +1,5 @@
+{
+  "name": "AI PPT 번역기",
+  "description": "PPTX 파일을 업로드하면 AI가 파일 내부의 텍스트를 감지하여 영어로 번역한 후, 번역된 PPTX 파일을 생성해주는 애플리케이션입니다.",
+  "requestFramePermissions": []
+}

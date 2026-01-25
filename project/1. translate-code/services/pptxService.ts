@@ -5,6 +5,7 @@ export interface TextItem {
     paragraphIndex: number;
     text: string; // HTML 태그가 포함된 텍스트 (예: "Hello <b>World</b>")
     slideNumber: number; // 슬라이드 번호 (1부터 시작)
+    originalLength?: number; // 원본 텍스트 길이 (동적 폰트 스케일링용)
 }
 
 const DRAWINGML_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main";
@@ -98,8 +99,12 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
 /**
  * 태그가 포함된 텍스트를 파싱하여 PPTX XML 노드(a:r)로 변환합니다.
  * DOMParser를 사용하여 중첩된 태그나 불완전한 HTML도 견고하게 처리합니다.
+ * @param xmlDoc XML Document
+ * @param text 번역된 텍스트 (HTML 태그 포함)
+ * @param defaultProps 원본 스타일 속성
+ * @param originalLength 원본 텍스트 길이 (동적 폰트 스케일링용)
  */
-const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?: Element): Node[] => {
+const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?: Element, originalLength?: number): Node[] => {
     const parser = new DOMParser();
     // HTML 파서를 사용하여 텍스트를 DOM 트리로 변환 (wrapper로 감싸서 처리)
     // <span> wrapper ensures a valid root for fragments
@@ -107,6 +112,19 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
     const root = doc.body.firstChild;
 
     const nodes: Node[] = [];
+
+    // 번역된 텍스트 길이 (태그 제외)
+    const translatedLength = text.replace(/<[^>]*>/g, '').length;
+
+    // 동적 스케일 팩터 계산: 텍스트가 늘어난 비율에 따라 폰트 축소
+    // 예: 원본 10자 → 번역 25자 = 2.5배 증가 → 폰트를 0.7배로 축소
+    // 최소 0.5, 최대 1.0 (축소만, 확대 안함)
+    let scaleFactor = 1.0;
+    if (originalLength && originalLength > 0 && translatedLength > originalLength) {
+        const ratio = originalLength / translatedLength;
+        // 약간의 여유를 두고 계산 (0.9 곱함)
+        scaleFactor = Math.max(0.5, Math.min(1.0, ratio * 0.9));
+    }
 
     // 재귀적으로 DOM 트리를 순회하며 스타일 적용
     const traverse = (node: Node, styles: { b: boolean, i: boolean }) => {
@@ -123,11 +141,19 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
             if (defaultProps) {
                 rPr = defaultProps.cloneNode(true) as Element;
 
-                // FONT SCALING LOGIC: Reduce font size by 15%
+                // DYNAMIC FONT SCALING: 텍스트 길이 비율에 따라 동적 축소
                 const currentSize = parseInt(rPr.getAttribute('sz') || '0');
                 if (currentSize > 0) {
-                    const newSize = Math.floor(currentSize * 0.85);
-                    rPr.setAttribute('sz', String(Math.max(newSize, 600)));
+                    const newSize = Math.floor(currentSize * scaleFactor);
+                    // 최소 폰트 크기 800 (약 8pt) 이상 유지
+                    rPr.setAttribute('sz', String(Math.max(newSize, 800)));
+                }
+
+                // TEXT SPACING NORMALIZATION: Convert narrow/very narrow (negative spc) to standard (0)
+                // This prevents English text overlap when original Korean used tight spacing
+                const currentSpc = parseInt(rPr.getAttribute('spc') || '0');
+                if (currentSpc < 0) {
+                    rPr.setAttribute('spc', '0');
                 }
             } else {
                 rPr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:rPr");
@@ -225,8 +251,8 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
 
             runNodes.forEach(r => pNode.removeChild(r));
 
-            // 새로운 Run 생성 및 삽입
-            const newNodes = createRunsFromTaggedText(xmlDoc, item.text, firstRPr); // Pass captured style
+            // 새로운 Run 생성 및 삽입 (원본 길이 전달하여 동적 스케일링)
+            const newNodes = createRunsFromTaggedText(xmlDoc, item.text, firstRPr, item.originalLength);
 
             // endParaRPr (문단 끝 속성) 앞에 삽입하거나 append
             const endParaRunPr = pNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'endParaRPr')[0];

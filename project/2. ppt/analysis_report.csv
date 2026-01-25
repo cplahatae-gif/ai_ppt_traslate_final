@@ -1,0 +1,17 @@
+text_orig,length_orig,left_orig,top_orig,width_orig,height_orig,avg_font_size_orig,font_names_orig,is_mixed_style_orig,run_count_orig,slide_idx_orig,shape_id,file_orig,source_orig,text_mine,length_mine,left_mine,top_mine,width_mine,height_mine,avg_font_size_mine,font_names_mine,is_mixed_style_mine,run_count_mine,slide_idx_mine,file_mine,source_mine,text,length,left,top,width,height,avg_font_size,font_names,is_mixed_style,run_count,slide_idx,file,source,len_ratio_mine,font_size_ratio_mine,mixed_style_lost
+[골재 안성사업소] 감전 RCA 보고서,21,1936419,1944528,5968878,480131,28.0,[],False,7,0,2,1. RCA 보고서_원본.pptx,orig,[Aggregate Anseong Plant] Electrical Shock RCA Report,53,1936419,1944528,5968878,480131,0,[],False,1,0,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,2.5238095238095237,0.0,False
+안성사업소,5,7596216,5938959,1210588,313932,16.0,[],False,1,0,4,1. RCA 보고서_원본.pptx,orig,Anseong Plant,13,7596216,5938959,1210588,313932,0,[],False,1,0,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,2.6,0.0,False
+2024.10.02,10,4388033,5499518,1242648,338554,16.0,['맑은 고딕'],False,1,0,6,1. RCA 보고서_원본.pptx,orig,2024.10.02,10,4388033,5499518,1242648,338554,0,[],False,1,0,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,1.0,0.0,False
+"Ⅰ. RCA 참석인원
+Ⅱ. 사고개요
+Ⅲ. 사고원인분석(RCA)
+Ⅳ. 재발 방지 대책",46,1037432,3445466,5544616,2246769,14.0,['+mn-ea'],False,13,0,7,1. RCA 보고서_원본.pptx,orig,"Ⅰ. RCA Attendees
+Ⅱ. Accident Overview
+Ⅲ. Accident Cause Analysis(RCA)
+Ⅳ. Recurrence Prevention Measures",103,1037432,3445466,5544616,2246769,0,[],False,9,0,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,2.239130434782609,0.0,False
+- 목   차 -,9,4505052,3092719,1125629,338554,16.0,['맑은 고딕'],True,4,0,8,1. RCA 보고서_원본.pptx,orig,- Table of Contents -,21,4505052,3092719,1125629,338554,0,[],True,3,0,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,2.3333333333333335,0.0,False
+Ⅰ. RCA 참석인원,11,163901,78297,3717157,324000,16.0,['+mn-ea'],False,2,1,15,1. RCA 보고서_원본.pptx,orig,Ⅰ. RCA Attendees,16,163901,78297,3717157,324000,0,[],False,2,1,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,1.4545454545454546,0.0,False
+RCA(Root Cause Analysis),24,6206198,35532,3699802,393538,14.0,['+mn-ea'],False,1,1,16,1. RCA 보고서_원본.pptx,orig,RCA (Root Cause Analysis),25,6206198,35532,3699802,393538,0,[],False,1,1,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,1.0416666666666667,0.0,False
+골재 안성사업소 감전사고,13,664710,568757,8994679,294545,14.0,['맑은 고딕'],False,3,2,43,1. RCA 보고서_원본.pptx,orig,Aggregate Anseong Plant Electrocution Accident,46,664710,568757,8994679,294545,0,[],False,3,2,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,3.5384615384615383,0.0,False
+Ⅱ. 사고개요,7,163901,78297,3717157,324000,16.0,['+mn-ea'],False,2,2,10,1. RCA 보고서_원본.pptx,orig,Ⅱ. Accident Overview,20,163901,78297,3717157,324000,0,[],False,2,2,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,2.857142857142857,0.0,False
+RCA(Root Cause Analysis),24,6206198,35532,3699802,393538,14.0,['+mn-ea'],False,1,2,11,1. RCA 보고서_원본.pptx,orig,RCA (Root Cause Analysis),25,6206198,35532,3699802,393538,0,[],False,1,2,2. RCA 보고서_내버전.pptx,mine,,,,,,,,,,,,,,1.0416666666666667,0.0,False

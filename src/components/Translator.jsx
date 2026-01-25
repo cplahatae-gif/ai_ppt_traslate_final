@@ -41,7 +41,7 @@ const Translator = () => {
 
     const getLanguageInfo = (lang) => {
         return lang === 'en'
-            ? { name: 'English', flag: '🇺🇸' }
+            ? { name: '영어', flag: '🇺🇸' }
             : { name: '한국어', flag: '🇰🇷' };
     };
 
@@ -54,7 +54,7 @@ const Translator = () => {
             <header className="app-header">
                 <div className="app-logo">
                     <div className="logo-icon">🌐</div>
-                    <h1 className="app-title">AI Translator</h1>
+                    <h1 className="app-title">구글 안티그래비티</h1>
                 </div>
                 <p className="app-subtitle">실시간 영어-한국어 번역 서비스</p>
             </header>
@@ -122,7 +122,7 @@ const Translator = () => {
                 <div className="translator-footer">
                     <div className="footer-info">
                         <span className="status-dot"></span>
-                        <span>Powered by MyMemory API</span>
+                        <span>MyMemory API 기반</span>
                     </div>
                     <button
                         className="copy-button"

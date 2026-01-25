@@ -152,7 +152,7 @@ def analyze_ppt(internal_path, benchmark_path):
 
 if __name__ == "__main__":
     base_dir = r"c:\Users\nomus\Desktop\구글 동기화\안티그래비티\테스트\project\2. ppt"
-    internal = os.path.join(base_dir, "2. RCA 보고서_내버전.pptx")
+    internal = os.path.join(base_dir, "2. RCA 보고서_내버전(v3).pptx")
     benchmark = os.path.join(base_dir, "3. RCA 보고서_유료버전.pptx")
     
     if not os.path.exists(internal):

@@ -3,29 +3,26 @@
 ### 1. 레이아웃 비교
 | 슬라이드 | 항목 | RCA_내버전 | RCA_유료버전 | 차이점 |
 |---|---|---|---|---|
-| 1 | Text Block 2 | Font: Default, Size: Default | Font: Malgun Gothic, Size: 16.0 | Font: Default vs Malgun Gothic |
-| 1 | Text Block 3 | Font: Default, Size: Default | Font: Calibri, Size: Default | Font: Default vs Calibri |
-| 1 | Text Block 4 | Font: Default, Size: Default | Font: Malgun Gothic, Size: 16.0 | Font: Default vs Malgun Gothic |
-| 2 | Text Block 1 | Font: Default, Size: Default | Font: Calibri, Size: Default | Font: Default vs Calibri, Bold: False vs True |
-| 2 | Text Block 2 | Font: Default, Size: Default | Font: Calibri, Size: 16.0 | Font: Default vs Calibri |
-| 3 | Text Block 1 | Font: Default, Size: Default | Font: Calibri, Size: Default | Font: Default vs Calibri, Bold: False vs True |
-| 3 | Text Block 2 | Font: Default, Size: Default | Font: Calibri, Size: 16.0 | Font: Default vs Calibri |
-| 3 | Text Block 4 | Font: Default, Size: Default | Font: Malgun Gothic, Size: Default | Font: Default vs Malgun Gothic |
+| 1 | Text Block 1 | Font: Default, Size: 23.8 | Font: Default, Size: 28.0 | Size: 23.8 vs 28.0, Bold: True vs False |
+| 1 | Text Block 2 | Font: 맑은 고딕, Size: 13.6 | Font: Malgun Gothic, Size: 16.0 | Font: 맑은 고딕 vs Malgun Gothic, Size: 13.6 vs 16.0 |
+| 1 | Text Block 3 | Font: +mn-ea, Size: 11.9 | Font: Calibri, Size: Default | Font: +mn-ea vs Calibri |
+| 1 | Text Block 4 | Font: 맑은 고딕, Size: 13.6 | Font: Malgun Gothic, Size: 16.0 | Font: 맑은 고딕 vs Malgun Gothic, Size: 13.6 vs 16.0 |
+| 1 | Text Block 5 | Font: Default, Size: 13.6 | Font: Default, Size: 16.0 | Size: 13.6 vs 16.0, Bold: True vs False |
+| 2 | Text Block 1 | Font: +mn-ea, Size: 11.9 | Font: Calibri, Size: Default | Font: +mn-ea vs Calibri, Bold: False vs True |
+| 2 | Text Block 2 | Font: +mn-ea, Size: 13.6 | Font: Calibri, Size: 16.0 | Font: +mn-ea vs Calibri, Size: 13.6 vs 16.0 |
+| 3 | Text Block 1 | Font: +mn-ea, Size: 11.9 | Font: Calibri, Size: Default | Font: +mn-ea vs Calibri |
+| 3 | Text Block 2 | Font: +mn-ea, Size: 13.6 | Font: Calibri, Size: 16.0 | Font: +mn-ea vs Calibri, Size: 13.6 vs 16.0 |
+| 3 | Text Block 4 | Font: 맑은 고딕, Size: 11.9 | Font: Malgun Gothic, Size: Default | Font: 맑은 고딕 vs Malgun Gothic |
 
 ### 2. 번역 품질 비교
 | 슬라이드 | 내버전 번역 | 유료버전 번역 | 문제점 |
 |---|---|---|---|
-| 1 | [Aggregate Anseong Plant] Electrical Shock RCA Rep... | [Aggregate Anseong Plant] Electric Shock RCA Repor... | Content mismatch |
-| 1 | Ⅰ. RCA Attendees Ⅱ. Accident Overview Ⅲ. Accident ... | I. RCA Attendees II. Accident Summary III. Root Ca... | Content mismatch |
+| 1 | [Aggregate Anseong Site] Electric Shock RCA Report | [Aggregate Anseong Plant] Electric Shock RCA Repor... | Content mismatch |
+| 1 | Ⅰ. RCA Participants Ⅱ. Accident Summary Ⅲ. Root Ca... | I. RCA Attendees II. Accident Summary III. Root Ca... | Content mismatch |
+| 1 | Anseong Site | Anseong Plant | Content mismatch |
 | 2 | RCA (Root Cause Analysis) | RCA(Root Cause Analysis) | Content mismatch |
-| 3 | Ⅱ. Accident Overview | II. Accident overview | Content mismatch |
-| 3 | Aggregate Anseong Plant Electrocution Accident | Aggregate Anseong Plant electrocution accident | Content mismatch |
+| 3 | II. Accident Summary | II. Accident overview | Content mismatch |
+| 3 | Aggregate Anseong Site Electric Shock Accident | Aggregate Anseong Plant electrocution accident | Content mismatch |
 
 ### 3. 개선 우선순위 To-Do List
-- [ ] **폰트 통일**: 모든 텍스트의 폰트를 `Calibri` (영문) 및 `맑은 고딕 (Malgun Gothic)` (한글)으로 명시적 설정.
-- [ ] **스타일 복원**: 제목 및 강조 텍스트의 `Bold` 속성 적용 (특히 슬라이드 2, 3).
-- [ ] **용어 수정**:
-    - "Electrical Shock" -> "Electric Shock"
-    - "Accident Overview" -> "Accident Summary"
-- [ ] **대소문자 규정**: 제목은 Title Case, 본문은 Sentence Case로 통일 (예: "Accident overview").
-- [ ] **레이아웃 조정**: 텍스트 박스 위치 및 크기 정밀 보정 (오차 > 20pt 발생 항목).
+- [ ] (이곳은 분석 결과를 바탕으로 채워주세요)
