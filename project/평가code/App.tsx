@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import type { EvaluationOutput, EvaluationOptions } from './src/types';
-import { evaluateTranslation, getDefaultOptions, generateMarkdownReport, exportAsJSON } from './src/index';
+import { evaluateTranslation, evaluateWithAI, getDefaultOptions, generateMarkdownReport, exportAsJSON } from './src/index';
+import type { AIEvaluationResult } from './src/geminiService';
 
 // 상태 아이콘
 const StatusIcon = ({ status }: { status: 'pass' | 'warning' | 'fail' }) => {
@@ -205,6 +206,59 @@ const IssueList = ({ issues }: { issues: EvaluationOutput['issues'] }) => {
         </div>
     );
 };
+// AI 평가 결과 컴포넌트
+const AIResultView = ({ result }: { result: AIEvaluationResult }) => {
+    return (
+        <div className="bg-white rounded-xl shadow-lg p-6 mt-6 border border-purple-100">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-purple-700">
+                🤖 AI 정성 평가 결과
+            </h3>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-purple-50 p-3 rounded-lg text-center">
+                    <div className="text-sm text-gray-600 mb-1">의미 정확도</div>
+                    <div className="text-2xl font-bold text-purple-600">{result.scores.semanticAccuracy}</div>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-lg text-center">
+                    <div className="text-sm text-gray-600 mb-1">자연스러움</div>
+                    <div className="text-2xl font-bold text-purple-600">{result.scores.naturalness}</div>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-lg text-center">
+                    <div className="text-sm text-gray-600 mb-1">용어 일관성</div>
+                    <div className="text-2xl font-bold text-purple-600">{result.scores.terminology}</div>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-lg text-center">
+                    <div className="text-sm text-gray-600 mb-1">맥락 유지</div>
+                    <div className="text-2xl font-bold text-purple-600">{result.scores.context}</div>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-semibold mb-2">💡 AI 피드백</h4>
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{result.overallFeedback}</p>
+                </div>
+
+                {result.issues.length > 0 && (
+                    <div>
+                        <h4 className="font-semibold mb-2 text-red-600">발견된 주요 이슈 ({result.issues.length})</h4>
+                        <ul className="space-y-2">
+                            {result.issues.slice(0, 5).map((issue: any, idx: number) => (
+                                <li key={idx} className="bg-red-50 p-3 rounded text-sm">
+                                    <span className="font-bold block mb-1">[{issue.type}] Slide {issue.slideNumber}</span>
+                                    {issue.description}
+                                    {issue.suggestion && (
+                                        <div className="mt-1 text-green-700 text-xs">👉 제안: {issue.suggestion}</div>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 // 메인 앱
 export default function App() {
@@ -220,6 +274,11 @@ export default function App() {
     const [progressLabel, setProgressLabel] = useState('');
     const [result, setResult] = useState<EvaluationOutput | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // AI 평가 상태
+    const [apiKey, setApiKey] = useState('');
+    const [isAIEvaluating, setIsAIEvaluating] = useState(false);
+    const [aiResult, setAiResult] = useState<AIEvaluationResult | null>(null);
 
     // 옵션
     const [options, setOptions] = useState<EvaluationOptions>(getDefaultOptions());
@@ -258,6 +317,34 @@ export default function App() {
             setIsEvaluating(false);
         }
     }, [koreanFile, englishFile, glossaryFile, referenceFile, options]);
+
+    // AI 평가 실행
+    const handleAIEvaluate = useCallback(async () => {
+        if (!koreanFile || !englishFile || !apiKey) {
+            setError('한글 원본, 영어 번역본 파일 및 API Key가 필요합니다.');
+            return;
+        }
+
+        setIsAIEvaluating(true);
+        setError(null);
+
+        try {
+            const result = await evaluateWithAI(
+                koreanFile,
+                englishFile,
+                apiKey,
+                (progress) => {
+                    // AI 평가는 별도 프로그레스는 복잡하므로 텍스트로만 표시하거나 메인 프로그레스 재활용
+                    // 여기서는 간단히 로그아웃만 하거나 상태 업데이트
+                }
+            );
+            setAiResult(result);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'AI 평가 중 오류가 발생했습니다.');
+        } finally {
+            setIsAIEvaluating(false);
+        }
+    }, [koreanFile, englishFile, apiKey]);
 
     // 결과 다운로드
     const handleDownload = (type: 'json' | 'md') => {
@@ -326,6 +413,23 @@ export default function App() {
                     </div>
                 </section>
 
+                {/* API Key 섹션 */}
+                <section className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                        🔑 Gemini API 설정 <span className="text-xs font-normal text-gray-500">(AI 정성 평가용)</span>
+                    </h2>
+                    <input
+                        type="password"
+                        placeholder="Google Gemini API Key를 입력하세요"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 outline-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                        * API Key는 브라우저에만 저장되며 서버로 전송되지 않습니다.
+                    </p>
+                </section>
+
                 {/* 옵션 섹션 */}
                 <section className="bg-white rounded-xl shadow-lg p-6 mb-6">
                     <h2 className="text-xl font-semibold mb-4">⚙️ 평가 설정</h2>
@@ -361,17 +465,28 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* 평가 버튼 */}
-                <div className="text-center mb-6">
+                <div className="text-center mb-6 flex justify-center gap-4">
                     <button
                         onClick={handleEvaluate}
                         disabled={!koreanFile || !englishFile || isEvaluating}
                         className={`px-8 py-3 rounded-lg font-semibold text-white transition-all ${!koreanFile || !englishFile || isEvaluating
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl'
                             }`}
                     >
-                        {isEvaluating ? '평가 중...' : '🔍 평가 시작'}
+                        {isEvaluating ? '기본 평가 중...' : '🔍 기본 평가 시작'}
+                    </button>
+
+                    <button
+                        onClick={handleAIEvaluate}
+                        disabled={!koreanFile || !englishFile || !apiKey || isAIEvaluating}
+                        className={`px-8 py-3 rounded-lg font-semibold text-white transition-all flex items-center gap-2 ${!koreanFile || !englishFile || !apiKey || isAIEvaluating
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl'
+                            }`}
+                    >
+                        <span>🤖</span>
+                        {isAIEvaluating ? 'AI 분석 중...' : 'AI 정성 평가'}
                     </button>
                 </div>
 
@@ -493,6 +608,9 @@ export default function App() {
                         {result.issues.length > 0 && (
                             <IssueList issues={result.issues} />
                         )}
+
+                        {/* AI 결과 표시 */}
+                        {aiResult && <AIResultView result={aiResult} />}
                     </div>
                 )}
             </div>
