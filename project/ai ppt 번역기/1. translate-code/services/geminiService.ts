@@ -35,11 +35,13 @@ Translate an array of Korean text fragments into professional English while STRI
 1. **One-to-One Mapping**: The input array has ${batch.length} items. The output MUST have exactly ${batch.length} items.
 2. **Order Preservation**: Do NOT reorder, merge, or split items.
 3. **Tag Preservation - CRITICAL**: 
-    - Keep all <b>, </b>, <i>, </i>, <br> tags in their EXACT relative positions.
+    - Preserve ALL tags EXACTLY as they appear: <b>, </b>, <i>, </i>, <u>, </u>, <br>, <color:XXXXXX>, </color>
+    - The <color:XXXXXX> tag contains a hex color code (e.g., <color:0000FF> for blue). Keep the exact color code.
     - If the original text has NO tags, the translation MUST have NO tags.
     - If the original has <b>only part</b> bolded, keep ONLY that part bolded.
     - Do NOT add new tags that don't exist in the original.
     - Do NOT remove existing tags from the original.
+    - Do NOT change the order or nesting of tags.
 4. **Glossary & Style**: 
     - Use "Electric Shock" instead of "Electrical Shock".
     - Use "Accident Summary" instead of "Accident Overview".

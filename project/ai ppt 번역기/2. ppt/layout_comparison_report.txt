@@ -1,0 +1,296 @@
+PPT LAYOUT COMPARISON REPORT
+Generated for layout difference analysis
+
+
+================================================================================
+FILE: c:\Users\nomus\Desktop\구글 동기화\안티그래비티\테스트\project\ai ppt 번역기\2. ppt\test_file.pptx
+================================================================================
+
+--- SLIDE 1 ---
+
+[Shape ID: 4]
+  Paragraph 0: "□ 목적"
+    Run 0: "□ 목적" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 6]
+  Paragraph 0: "1. 중대재해처벌법 개요"
+    Run 0: "1" | Font:맑은 고딕 | Size:18.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 1: ". " | Font:맑은 고딕 | Size:18.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 2: "중대재해처벌법 개요" | Font:맑은 고딕 | Size:18.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 45]
+  Paragraph 0: "이 법은 사업 또는 사업장, 공중이용시설 및 공중교통수단을 운영하거나 인체에 해로운 원료나..."
+    Run 0: "이 법은 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "사업 또는 사업장" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 2: ", " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: "공중이용시설 및 공중교통수단을 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 4: "운영하거나" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 5: " 인체에 해로운 원료나 제조물을 취급하면서 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 6: "안전ㆍ보건" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 7: " 조치의무" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 8: "를 위반하여 인명피해를 발생하게 한 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 9: "사업주" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 10: ", " | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 11: "경영책임자" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 12: "," | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 14: "공무원 및 법인" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:0000FF
+    Run 15: "의 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 16: "처벌 " | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 17: "등을 규정함으로써 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 18: "중대재해를 예방" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 19: "하고 시민과 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 20: "종사자" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 21: "의 생명과 신체를 보호함을 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 22: "목적으로 한다" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 23: "." | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 58]
+  Paragraph 0: "□ 종사자"
+    Run 0: "□ 종사자" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 63]
+  Paragraph 0: "□ 중대재해"
+    Run 0: "□ 중대재해" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 19]
+  Paragraph 0: "직접 고용한 근로자"
+    Run 0: "직접 고용한 근로자" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:False | Underline:None | Color:FF0000
+  Paragraph 1: "도급∙용역∙위탁 등 계약의 형식에 관계없이 대가를 목적으로 노무를 제공하는 자"
+    Run 0: "도급∙용역∙위탁" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: " 등 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 2: "계약" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 3: "의 형식에 관계없이 대가를 목적으로 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 4: "노무를 제공하는 자" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+  Paragraph 2: "각 단계별 수급인 및 수급인의 근로자, 수급인에게 대가를 목적으로 노무를 제공하는 자"
+    Run 0: "각 단계별 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "수급인" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 2: " 및 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: "수급인의 근로자" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 4: ", " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 5: "수급인에게 대가를 목적으로 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 6: "노무를 제공하는 자" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 66]
+  Paragraph 0: "사망자가 1명이상 발생"
+    Run 0: "사망자가 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 1: "1" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 2: "명이상 발생" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+  Paragraph 1: "동일한 사고로 6개월 이상 치료가 필요한 부상자가 2명이상 발생"
+    Run 0: "동일한 사고로 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 1: "6" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 2: "개월 이상 치료가 필요한 부상자가 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 3: "2" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 4: "명이상 발생" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+  Paragraph 2: "동일한 유해요인으로 급성중독 등 대통령령으로 정하는 직업성 질병자가 1년 이내에 3명이상 ..."
+    Run 0: "동일한 유해요인으로 급성중독 등 대통령령으로 정하는 직..." | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "1" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 2: "년 이내에 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: "3" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 4: "명이상 발생" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+
+--- SLIDE 2 ---
+
+[Shape ID: 6]
+  Paragraph 0: "2. 중대재해처벌법상 경영책임자 "
+    Run 0: "2. " | Font:맑은 고딕 | Size:18.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 1: "중대재해처벌법상 경영책임자" | Font:맑은 고딕 | Size:18.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 5]
+  Paragraph 0: "[수원지방법원 2024고합833 판결] "
+    Run 0: "[" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 1: "수원지방법원 " | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 2: "2024" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 3: "고합" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 4: "833 " | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 5: "판결" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 6: "] " | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+  Paragraph 1: " 중대재해처벌법이 제정되기 이전에는 법인의 대표이사는 산업안전보건법상 의무주체인 사업주에 ..."
+    Run 1: "중대재해처벌법이 제정되기 이전" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:None | Color:0000FF
+    Run 2: "에는 법인의 대표이사는 산업안전보건법상 의무주체인 사업..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: ", " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 4: "실제 사업장에서 재해가 발생하였을 때 대표이사는 구체적" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 5: "․" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 6: "직접적 의무가 없다거나 " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 7: "산업안전보건법상" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 8: "의 안전보건 조치의무 불이행에 대한 인식이없었다는 등의..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 9: ", " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 10: "공장장 등 " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 11: "현장의" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 12: " 안전보건관리" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:0000FF
+    Run 13: "책임자 위주로 처벌" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 14: "이 이루어지고 있었다" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 15: "." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+  Paragraph 3: "  이에 중대재해처벌법은 경영책임자등이 안전보건 확보의무를 부담하는 것으로 명확하게 규정함..."
+    Run 0: "  이에 " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "중대재해처벌법" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 2: "은" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:Type:None
+    Run 3: " 경영책임자등이 안전보건 확보의무를 부담하는 것으로 명..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 4: "법인의 대표이사" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 5: "도 중대재해처벌법위반죄의 주체가 되도록 한 것" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 6: "이다" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 7: ". " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 8: "따라서 대표이사는 원칙적으로 중대재해처벌법상 작위의무를..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 9: ", " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 10: "사업 운영의 실질에 따라 대표이사가 아닌 제" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 11: "3" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 12: "자에게 어느 정도 경영의 권한이부여되어 있다고 하더라도..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 13: "대표이사가 아닌 " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 14: "제" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 15: "3" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 16: "자를 경영책임자등에 해당한다고 인정할 때" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 17: "에는 위와 같은 입법취지에 비추어 " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 18: "신중" | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 19: "을 기할 필요" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:0000FF
+    Run 20: "가 있다" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 21: "." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+  Paragraph 5: "  그렇지 않다면 대표이사가 손쉽게 자신이 중대재해처벌법에 따라 부담하여야 하는 작위의무를..."
+    Run 0: "  그렇지 않다면 대표이사가 손쉽게 자신이 중대재해처벌..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "3" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 2: "자를 내세워 모면할 수 있도록 외관이나 형식을 작출할 ..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: ", " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 4: "이는 대표이사가 스스로 실현하여야 하는 종사자의 안전보..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 5: ". " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 6: "그러므로 대표이사가 형식적으로만 존재하고 경영에 대한 ..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 7: "명목상 대표이사" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:0000FF
+    Run 8: "에게 중대재해처벌법상 작위의무를 부담하도록 하는 것이 ..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 9: "특별한 사정이 있는 때에 한하여 " | Font:맑은 고딕 | Size:12.0pt | Bold:True | Italic:None | Underline:True | Color:0000FF
+    Run 10: "대표이사가 아닌 제" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 11: "3" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 12: "자를 사업총괄책임자로서 경영책임자등에 해당한다고 봄이 ..." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+    Run 13: "." | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:True | Color:Type:None
+
+[Shape ID: 7]
+  Paragraph 0: "2024년 아리셀 공장 화재사고로 23명 사망. 대표이사는 아들(본부장)에게 실질적 권한이..."
+    Run 0: "2024" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "년 아리셀 공장 화재사고로 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 2: "23" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: "명 사망" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 4: ". " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 5: "대표이사" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 6: "는 아들" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 7: "(" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 8: "본부장" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 9: ")" | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 10: "에게 실질적 권한이 있어서 " | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 11: "경영책임자가 아니라고 주장" | Font:맑은 고딕 | Size:14.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 12: "." | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+  Paragraph 1: "하지만 다음의 이유등을 근거로 법원은 대표이사를 경영책임자로 봄. ①대표이사로서의 지위 인..."
+    Run 0: "하지만 다음의 이유등을 근거로 법원은 대표이사를 경영책..." | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "." | Font:맑은 고딕 | Size:14.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: "①대표이사로서의 지위 인식" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 4: ", " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 5: " ②경영 전반 상세보고 받은 점" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 6: ", " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 7: "③필요시 본부장에게 지시 감독 권한 행사" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 8: ", " | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 9: "③모든 영역에서 최종 의사결정권 보유" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 11: "및 지시 등" | Font:맑은 고딕 | Size:12.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+
+
+================================================================================
+FILE: c:\Users\nomus\Desktop\구글 동기화\안티그래비티\테스트\project\ai ppt 번역기\2. ppt\test_file_p1-2_en.pptx
+================================================================================
+
+--- SLIDE 1 ---
+
+[Shape ID: 4]
+  Paragraph 0: "□ Purpose"
+    Run 0: "□ Purpose" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 6]
+  Paragraph 0: "1. Overview of the Serious Accidents Punishment Ac..."
+    Run 0: "1" | Font:맑은 고딕 | Size:9.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 1: ". " | Font:맑은 고딕 | Size:9.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 2: "Overview of the Serious Accide..." | Font:맑은 고딕 | Size:9.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 45]
+  Paragraph 0: "This Act aims to prevent serious accidents and pro..."
+    Run 0: "This Act aims to " | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "prevent serious accidents" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 2: " and protect the lives and phy..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: "workers" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 4: " by prescribing " | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 5: "punishment" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 6: " for " | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 7: "business owners, responsible m..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 8: ", " | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 9: "public officials, and corporat..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 10: " that cause casualties by viol..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 11: "safety and health" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 12: " measures duties" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 13: " while operating a business or..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 58]
+  Paragraph 0: "□ Workers"
+    Run 0: "□ Workers" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 63]
+  Paragraph 0: "□ Serious Accidents"
+    Run 0: "□ Serious Accidents" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 19]
+  Paragraph 0: "Employees hired directly"
+    Run 0: "Employees hired directly" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:FF0000
+  Paragraph 1: "Regardless of the form of contract such as contrac..."
+    Run 0: "Regardless of the form of " | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "contract" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 2: " such as contracting, outsourc..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: "persons who provide labor" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 4: " for consideration" | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+  Paragraph 2: "Contractors and contractor's employees at each sta..."
+    Run 0: "Contractors" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 1: " and " | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 2: "contractor's employees" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 3: " at each stage, and " | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 4: "persons who provide labor" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 5: " to the contractor for conside..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 66]
+  Paragraph 0: "At least one death occurs"
+    Run 0: "At least one death occurs" | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+  Paragraph 1: "At least two persons injured in the same accident ..."
+    Run 0: "At least two persons injured i..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+  Paragraph 2: "At least three persons with occupational diseases,..."
+    Run 0: "At least three persons with oc..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+
+--- SLIDE 2 ---
+
+[Shape ID: 6]
+  Paragraph 0: "2. Responsible Managing Officer under the Serious ..."
+    Run 0: "2. Responsible Managing Office..." | Font:맑은 고딕 | Size:9.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 5]
+  Paragraph 0: "[Suwon District Court 2024Gohap833 Ruling] "
+    Run 0: "[Suwon District Court 2024Goha..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+  Paragraph 1: " Before the enactment of the Serious Accidents Pun..."
+    Run 1: "Before the enactment of the Se..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:0000FF
+    Run 2: ", the representative director ..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 3: "punishment was focused on thos..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:0000FF
+    Run 4: " of safety and health manageme..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 5: "at the site" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:0000FF
+    Run 6: ", such as site managers and pl..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+    Run 7: "Occupational Safety and Health..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:0000FF
+    Run 8: "." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:0000FF
+  Paragraph 3: "  Accordingly, the Serious Accidents Punishment Ac..."
+    Run 0: "  Accordingly, the " | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "Serious Accidents Punishment A..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 2: " clearly stipulates that the r..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 3: "representative director of a c..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 4: " the subject of the crime of v..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 5: "caution" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 6: " must be exercised in light of..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 7: "recognizing a third party othe..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+  Paragraph 5: "  Otherwise, the representative director could eas..."
+    Run 0: "  Otherwise, the representativ..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "only when there are special ci..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 2: ", such as when the representat..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+
+[Shape ID: 7]
+  Paragraph 0: "23 fatalities in the 2024 Aricell Plant fire accid..."
+    Run 0: "23 fatalities in the 2024 Aric..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "CEO" | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 3: "claimed he was not the respons..." | Font:맑은 고딕 | Size:8.0pt | Bold:True | Italic:None | Underline:None | Color:Type:None
+    Run 4: ", arguing his son (Head of Div..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+  Paragraph 1: "However, the court identified the CEO as the respo..."
+    Run 0: "However, the court identified ..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None
+    Run 1: "①Recognition of status as CEO,..." | Font:맑은 고딕 | Size:8.0pt | Bold:None | Italic:None | Underline:None | Color:Type:None

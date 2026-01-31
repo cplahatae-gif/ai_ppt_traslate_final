@@ -76,11 +76,24 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
                     const rPr = rNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr')[0];
                     const isBold = rPr?.getAttribute('b') === '1';
                     const isItalic = rPr?.getAttribute('i') === '1';
+                    const isUnderline = rPr?.getAttribute('u') === 'sng'; // single underline
+
+                    // 색상 추출 (solidFill > srgbClr)
+                    let colorHex = '';
+                    const solidFill = rPr?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill')[0];
+                    if (solidFill) {
+                        const srgbClr = solidFill.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'srgbClr')[0];
+                        if (srgbClr) {
+                            colorHex = srgbClr.getAttribute('val') || '';
+                        }
+                    }
 
                     let chunk = text;
-                    // 태그 감싸기 (Gemini가 인식하도록)
-                    if (isBold) chunk = `<b>${chunk}</b>`;
+                    // 태그 감싸기 (가장 안쪽부터: color -> underline -> italic -> bold)
+                    if (colorHex) chunk = `<color:${colorHex}>${chunk}</color>`;
+                    if (isUnderline) chunk = `<u>${chunk}</u>`;
                     if (isItalic) chunk = `<i>${chunk}</i>`;
+                    if (isBold) chunk = `<b>${chunk}</b>`;
 
                     formattedText += chunk;
                 } else if (child.nodeName === 'a:br') {
@@ -124,17 +137,16 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
     const translatedLength = text.replace(/<[^>]*>/g, '').length;
 
     // 동적 스케일 팩터 계산: 텍스트가 늘어난 비율에 따라 폰트 축소
-    // 예: 원본 10자 → 번역 25자 = 2.5배 증가 → 폰트를 0.7배로 축소
-    // 최소 0.5, 최대 1.0 (축소만, 확대 안함)
+    // 최소 0.7 (70%), 최대 1.0 (축소만, 확대 안함)
+    // 텍스트가 30% 이상 증가한 경우에만 축소 적용
     let scaleFactor = 1.0;
-    if (originalLength && originalLength > 0 && translatedLength > originalLength) {
+    if (originalLength && originalLength > 0 && translatedLength > originalLength * 1.3) {
         const ratio = originalLength / translatedLength;
-        // 약간의 여유를 두고 계산 (0.9 곱함)
-        scaleFactor = Math.max(0.5, Math.min(1.0, ratio * 0.9));
+        scaleFactor = Math.max(0.7, Math.min(1.0, ratio));
     }
 
     // 재귀적으로 DOM 트리를 순회하며 스타일 적용
-    const traverse = (node: Node, styles: { b: boolean, i: boolean }) => {
+    const traverse = (node: Node, styles: { b: boolean, i: boolean, u: boolean, color: string }) => {
         if (node.nodeType === Node.TEXT_NODE) {
             const content = node.textContent || '';
             if (!content) return;
@@ -177,6 +189,27 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 rPr.removeAttribute('i');
             }
 
+            // Underline 적용
+            if (styles.u) {
+                rPr.setAttribute('u', 'sng');
+            } else {
+                rPr.removeAttribute('u');
+            }
+
+            // Color 적용 (solidFill > srgbClr)
+            // 기존 solidFill 제거 후 새로 생성
+            const existingSolidFill = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill')[0];
+            if (existingSolidFill) {
+                rPr.removeChild(existingSolidFill);
+            }
+            if (styles.color) {
+                const solidFill = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:solidFill');
+                const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
+                srgbClr.setAttribute('val', styles.color);
+                solidFill.appendChild(srgbClr);
+                rPr.appendChild(solidFill);
+            }
+
             rPr.setAttribute('lang', 'en-US');
             rPr.setAttribute('dirty', '0');
 
@@ -203,6 +236,12 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
 
             if (tagName === 'b' || tagName === 'strong') newStyles.b = true;
             if (tagName === 'i' || tagName === 'em') newStyles.i = true;
+            if (tagName === 'u') newStyles.u = true;
+
+            // <color:RRGGBB> 태그 처리
+            if (tagName.startsWith('color:')) {
+                newStyles.color = tagName.substring(6).toUpperCase();
+            }
 
             // 자식 노드 순회
             node.childNodes.forEach(child => traverse(child, newStyles));
@@ -210,7 +249,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
     };
 
     if (root) {
-        root.childNodes.forEach(child => traverse(child, { b: false, i: false }));
+        root.childNodes.forEach(child => traverse(child, { b: false, i: false, u: false, color: '' }));
     }
 
     return nodes;
