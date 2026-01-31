@@ -1,0 +1,22 @@
+Found 0 rPr elements
+
+Found 60 rPr elements
+
+=== POTENTIAL HIGHLIGHT 24 ===
+<a:rPr lang="ko-KR" altLang="en-US" sz="1400" b="1" dirty="0"><a:highlight><a:srgbClr val="FFFF00"/></a:highlight><a:latin typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/><a:ea typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/></a:rPr>
+
+=== POTENTIAL HIGHLIGHT 25 ===
+<a:rPr lang="ko-KR" altLang="en-US" sz="1400" dirty="0"><a:highlight><a:srgbClr val="FFFF00"/></a:highlight><a:latin typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/><a:ea typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/></a:rPr>
+
+Found 'highlight' keyword in content
+a:rPr><a:t>하고 시민과 </a:t></a:r><a:r><a:rPr lang="ko-KR" altLang="en-US" sz="1400" b="1" dirty="0"><a:highlight><a:srgbClr val="FFFF00"/></a:highlight><a:latin typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/><a:ea typeface="맑은 고딕" panose="020B0503020000020004" pitchFami
+
+Found FFFF00 (yellow) in content!
+
+Context:
+="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/></a:rPr><a:t>하고 시민과 </a:t></a:r><a:r><a:rPr lang="ko-KR" altLang="en-US" sz="1400" b="1" dirty="0"><a:highlight><a:srgbClr val="FFFF00"/></a:highlight><a:latin typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/><a:ea typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/></a:rPr>
+--------------------------------------------------
+
+Context:
+a typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/></a:rPr><a:t>종사자</a:t></a:r><a:r><a:rPr lang="ko-KR" altLang="en-US" sz="1400" dirty="0"><a:highlight><a:srgbClr val="FFFF00"/></a:highlight><a:latin typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/><a:ea typeface="맑은 고딕" panose="020B0503020000020004" pitchFamily="50" charset="-127"/></a:rPr>
+--------------------------------------------------

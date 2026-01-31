@@ -88,8 +88,19 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
                         }
                     }
 
+                    // 하이라이트(배경색) 추출 (highlight > srgbClr)
+                    let highlightHex = '';
+                    const highlight = rPr?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
+                    if (highlight) {
+                        const srgbClr = highlight.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'srgbClr')[0];
+                        if (srgbClr) {
+                            highlightHex = srgbClr.getAttribute('val') || '';
+                        }
+                    }
+
                     let chunk = text;
-                    // 태그 감싸기 (가장 안쪽부터: color -> underline -> italic -> bold)
+                    // 태그 감싸기 (가장 안쪽부터: highlight -> color -> underline -> italic -> bold)
+                    if (highlightHex) chunk = `<highlight:${highlightHex}>${chunk}</highlight>`;
                     if (colorHex) chunk = `<color:${colorHex}>${chunk}</color>`;
                     if (isUnderline) chunk = `<u>${chunk}</u>`;
                     if (isItalic) chunk = `<i>${chunk}</i>`;
@@ -146,7 +157,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
     }
 
     // 재귀적으로 DOM 트리를 순회하며 스타일 적용
-    const traverse = (node: Node, styles: { b: boolean, i: boolean, u: boolean, color: string }) => {
+    const traverse = (node: Node, styles: { b: boolean, i: boolean, u: boolean, color: string, highlight: string }) => {
         if (node.nodeType === Node.TEXT_NODE) {
             const content = node.textContent || '';
             if (!content) return;
@@ -210,6 +221,19 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 rPr.appendChild(solidFill);
             }
 
+            // Highlight(배경색) 적용 (highlight > srgbClr)
+            const existingHighlight = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
+            if (existingHighlight) {
+                rPr.removeChild(existingHighlight);
+            }
+            if (styles.highlight) {
+                const highlightEl = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:highlight');
+                const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
+                srgbClr.setAttribute('val', styles.highlight);
+                highlightEl.appendChild(srgbClr);
+                rPr.appendChild(highlightEl);
+            }
+
             rPr.setAttribute('lang', 'en-US');
             rPr.setAttribute('dirty', '0');
 
@@ -243,13 +267,18 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 newStyles.color = tagName.substring(6).toUpperCase();
             }
 
+            // <highlight:RRGGBB> 태그 처리
+            if (tagName.startsWith('highlight:')) {
+                newStyles.highlight = tagName.substring(10).toUpperCase();
+            }
+
             // 자식 노드 순회
             node.childNodes.forEach(child => traverse(child, newStyles));
         }
     };
 
     if (root) {
-        root.childNodes.forEach(child => traverse(child, { b: false, i: false, u: false, color: '' }));
+        root.childNodes.forEach(child => traverse(child, { b: false, i: false, u: false, color: '', highlight: '' }));
     }
 
     return nodes;
