@@ -63,55 +63,97 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
             let formattedText = '';
             let hasText = false;
 
+            // Run Buffer for merging adjacent runs with same styles
+            interface RunStyle {
+                text: string;
+                b: boolean;
+                i: boolean;
+                u: boolean;
+                color: string;
+                highlight: string;
+            }
+            let runBuffer: RunStyle[] = [];
+
+            const flushBuffer = () => {
+                if (runBuffer.length === 0) return '';
+                let result = '';
+                let current = runBuffer[0];
+
+                for (let k = 1; k < runBuffer.length; k++) {
+                    const next = runBuffer[k];
+                    const isSame = current.b === next.b &&
+                        current.i === next.i &&
+                        current.u === next.u &&
+                        current.color === next.color &&
+                        current.highlight === next.highlight;
+
+                    if (isSame) {
+                        current.text += next.text;
+                    } else {
+                        result += tagRun(current);
+                        current = next;
+                    }
+                }
+                result += tagRun(current);
+                runBuffer = [];
+                return result;
+            };
+
+            const tagRun = (run: RunStyle) => {
+                let chunk = run.text;
+                if (run.highlight) chunk = `<highlight:${run.highlight}>${chunk}</highlight>`;
+                if (run.color) chunk = `<color:${run.color}>${chunk}</color>`;
+                if (run.u) chunk = `<u>${chunk}</u>`;
+                if (run.i) chunk = `<i>${chunk}</i>`;
+                if (run.b) chunk = `<b>${chunk}</b>`;
+                return chunk;
+            };
+
             childNodes.forEach(child => {
                 if (child.nodeName === 'a:r') {
                     const rNode = child as Element;
                     const tNode = rNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 't')[0];
                     const text = tNode?.textContent || '';
                     if (!text) return;
-
                     hasText = true;
 
                     // 스타일 확인 (rPr)
                     const rPr = rNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr')[0];
-                    const isBold = rPr?.getAttribute('b') === '1';
-                    const isItalic = rPr?.getAttribute('i') === '1';
-                    const isUnderline = rPr?.getAttribute('u') === 'sng'; // single underline
+                    const b = rPr?.getAttribute('b') === '1';
+                    const i = rPr?.getAttribute('i') === '1';
+                    const u = rPr?.getAttribute('u') === 'sng';
 
                     // 색상 추출 (solidFill > srgbClr)
-                    let colorHex = '';
+                    let color = '';
                     const solidFill = rPr?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill')[0];
                     if (solidFill) {
                         const srgbClr = solidFill.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'srgbClr')[0];
                         if (srgbClr) {
-                            colorHex = srgbClr.getAttribute('val') || '';
+                            color = srgbClr.getAttribute('val') || '';
                         }
                     }
 
                     // 하이라이트(배경색) 추출 (highlight > srgbClr)
-                    let highlightHex = '';
-                    const highlight = rPr?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
-                    if (highlight) {
-                        const srgbClr = highlight.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'srgbClr')[0];
+                    let highlight = '';
+                    const highlightEl = rPr?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
+                    if (highlightEl) {
+                        const srgbClr = highlightEl.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'srgbClr')[0];
                         if (srgbClr) {
-                            highlightHex = srgbClr.getAttribute('val') || '';
+                            highlight = srgbClr.getAttribute('val') || '';
                         }
                     }
 
-                    let chunk = text;
-                    // 태그 감싸기 (가장 안쪽부터: highlight -> color -> underline -> italic -> bold)
-                    if (highlightHex) chunk = `<highlight:${highlightHex}>${chunk}</highlight>`;
-                    if (colorHex) chunk = `<color:${colorHex}>${chunk}</color>`;
-                    if (isUnderline) chunk = `<u>${chunk}</u>`;
-                    if (isItalic) chunk = `<i>${chunk}</i>`;
-                    if (isBold) chunk = `<b>${chunk}</b>`;
+                    runBuffer.push({ text, b, i, u, color, highlight });
 
-                    formattedText += chunk;
                 } else if (child.nodeName === 'a:br') {
+                    formattedText += flushBuffer();
                     formattedText += '<br>';
                     hasText = true;
                 }
             });
+
+            // Flush remaining runs
+            formattedText += flushBuffer();
 
             if (hasText && formattedText.trim() !== '') {
                 allTextItems.push({

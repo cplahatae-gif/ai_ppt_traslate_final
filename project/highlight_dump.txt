@@ -1,0 +1,10 @@
+
+[Found Highlight in ppt/slides/slide1.xml] Text: '종사자'
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: '의 생명과 신체를 보호함을 '
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
