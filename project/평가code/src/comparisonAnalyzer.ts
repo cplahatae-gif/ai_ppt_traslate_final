@@ -19,6 +19,11 @@ import type {
     RomanNumeralIssue,
     GlossaryMatchResult,
     GlossaryEntry,
+    // 새로 추가된 타입들
+    PartialStyleIssue,
+    ColorDistributionIssue,
+    TextOverflowIssue,
+    WordBreakIssue,
 } from './types';
 import { extractBodyProperties, createTextMapping } from './pptxParser';
 import { matchGlossaryTerms } from './glossaryParser';
@@ -51,7 +56,7 @@ export async function analyzeComparison(
     // 텍스트 매핑 생성
     const textMappings = createTextMapping(koreanPPTX, englishPPTX);
 
-    // 시각적 분석
+    // 시각적 분석 (기존)
     const fontSizeChanges = analyzeFontSizeChanges(textMappings, minAllowedRatio, maxAllowedRatio);
     const layoutChanges = await analyzeLayoutChanges(koreanFile, englishFile);
     const spacingChanges = analyzeSpacingChanges(textMappings);
@@ -60,13 +65,21 @@ export async function analyzeComparison(
     const specialCharIssues = analyzeSpecialChars(textMappings);
     const tableOverflows = analyzeTableOverflows(englishPPTX);
 
-    // 번역 분석
+    // 시각적 분석 (신규 추가)
+    const partialStyleIssues = analyzePartialStyles(textMappings);
+    const colorDistributionIssues = analyzeColorDistribution(textMappings);
+    const textOverflowIssues = analyzeTextOverflow(textMappings);
+
+    // 번역 분석 (기존)
     const glossaryMismatches = glossary
         ? matchGlossaryTerms(koreanPPTX.allTextItems, englishPPTX.allTextItems, glossary)
         : [];
     const termInconsistencies = analyzeTermConsistency(textMappings);
     const caseViolations = analyzeCaseRules(englishPPTX.allTextItems);
     const romanNumeralIssues = analyzeRomanNumerals(textMappings);
+
+    // 번역 분석 (신규 추가)
+    const wordBreakIssues = analyzeWordBreaks(textMappings);
 
     return {
         visual: {
@@ -77,12 +90,18 @@ export async function analyzeComparison(
             langAttributeIssues,
             specialCharIssues,
             tableOverflows,
+            // 신규 추가
+            partialStyleIssues,
+            colorDistributionIssues,
+            textOverflowIssues,
         },
         translation: {
             glossaryMismatches: glossaryMismatches.filter(m => !m.isMatch),
             termInconsistencies,
             caseViolations,
             romanNumeralIssues,
+            // 신규 추가
+            wordBreakIssues,
         },
     };
 }
@@ -457,3 +476,264 @@ function analyzeRomanNumerals(
 
     return issues;
 }
+
+// ========================================
+// 신규 추가된 분석 함수들
+// ========================================
+
+/**
+ * 부분 스타일 문제를 분석합니다.
+ * 원본에서 일부만 볼드/색상이었는데 번역본에서 전체가 적용된 경우를 감지합니다.
+ * 
+ * 사용자 언급 문제:
+ * 1. 일부 글자만 볼드체가 되야하는데 전부다 볼드가 되는 경우
+ * 2. 문장에서 일부만 빨간색인데 전부 빨간색으로 표기되는 경우
+ */
+function analyzePartialStyles(
+    mappings: { korean: TextItem; english: TextItem }[]
+): PartialStyleIssue[] {
+    const issues: PartialStyleIssue[] = [];
+
+    for (const { korean, english } of mappings) {
+        const koreanRuns = korean.runs;
+        const englishRuns = english.runs;
+
+        // Run이 2개 이상 있어야 부분 스타일이 의미가 있음
+        if (koreanRuns.length < 2) continue;
+
+        // 1. 부분 볼드 분석
+        const koreanBoldCount = koreanRuns.filter(r => r.properties.bold).length;
+        const englishBoldCount = englishRuns.filter(r => r.properties.bold).length;
+
+        // 원본에서 일부만 볼드인데 번역본에서 전부 볼드인 경우
+        if (koreanBoldCount > 0 && koreanBoldCount < koreanRuns.length) {
+            if (englishBoldCount === englishRuns.length && englishRuns.length > 0) {
+                issues.push({
+                    slideNumber: korean.slideNumber,
+                    paragraphIndex: korean.paragraphIndex,
+                    type: 'partial_bold',
+                    originalText: korean.text.substring(0, 80),
+                    translatedText: english.text.substring(0, 80),
+                    originalStyleDistribution: {
+                        styled: koreanBoldCount,
+                        total: koreanRuns.length,
+                    },
+                    translatedStyleDistribution: {
+                        styled: englishBoldCount,
+                        total: englishRuns.length,
+                    },
+                    description: `원본: ${koreanBoldCount}/${koreanRuns.length} 볼드 → 번역본: 전체 볼드`,
+                });
+            }
+        }
+
+        // 2. 부분 색상 분석 (색상이 있는 Run 분석)
+        const koreanColoredRuns = koreanRuns.filter(r => r.properties.color);
+        const englishColoredRuns = englishRuns.filter(r => r.properties.color);
+
+        // 원본에서 일부만 색상이 있는데 번역본에서 전부 같은 색상인 경우
+        if (koreanColoredRuns.length > 0 && koreanColoredRuns.length < koreanRuns.length) {
+            if (englishColoredRuns.length === englishRuns.length && englishRuns.length > 0) {
+                issues.push({
+                    slideNumber: korean.slideNumber,
+                    paragraphIndex: korean.paragraphIndex,
+                    type: 'partial_color',
+                    originalText: korean.text.substring(0, 80),
+                    translatedText: english.text.substring(0, 80),
+                    originalStyleDistribution: {
+                        styled: koreanColoredRuns.length,
+                        total: koreanRuns.length,
+                    },
+                    translatedStyleDistribution: {
+                        styled: englishColoredRuns.length,
+                        total: englishRuns.length,
+                    },
+                    description: `원본: ${koreanColoredRuns.length}/${koreanRuns.length} 색상 → 번역본: 전체 색상`,
+                });
+            }
+        }
+
+        // 3. 부분 이탤릭 분석
+        const koreanItalicCount = koreanRuns.filter(r => r.properties.italic).length;
+        const englishItalicCount = englishRuns.filter(r => r.properties.italic).length;
+
+        if (koreanItalicCount > 0 && koreanItalicCount < koreanRuns.length) {
+            if (englishItalicCount === englishRuns.length && englishRuns.length > 0) {
+                issues.push({
+                    slideNumber: korean.slideNumber,
+                    paragraphIndex: korean.paragraphIndex,
+                    type: 'partial_italic',
+                    originalText: korean.text.substring(0, 80),
+                    translatedText: english.text.substring(0, 80),
+                    originalStyleDistribution: {
+                        styled: koreanItalicCount,
+                        total: koreanRuns.length,
+                    },
+                    translatedStyleDistribution: {
+                        styled: englishItalicCount,
+                        total: englishRuns.length,
+                    },
+                    description: `원본: ${koreanItalicCount}/${koreanRuns.length} 이탤릭 → 번역본: 전체 이탤릭`,
+                });
+            }
+        }
+    }
+
+    return issues;
+}
+
+/**
+ * 색상 분포 문제를 분석합니다.
+ * 원본에 여러 색상이 사용되었는데 번역본에서 단일 색상으로 변경된 경우를 감지합니다.
+ * 
+ * 사용자 언급 문제:
+ * - 페이지 5: issue 부분은 빨간색이고 맞은편은 파란색인데 번역본은 모두 빨간색
+ */
+function analyzeColorDistribution(
+    mappings: { korean: TextItem; english: TextItem }[]
+): ColorDistributionIssue[] {
+    const issues: ColorDistributionIssue[] = [];
+
+    for (const { korean, english } of mappings) {
+        // 원본의 모든 색상 추출 (null 제외, 중복 제거)
+        const originalColors = [...new Set(
+            korean.runs
+                .map(r => r.properties.color)
+                .filter((c): c is string => c !== null)
+        )];
+
+        // 번역본의 모든 색상 추출
+        const translatedColors = [...new Set(
+            english.runs
+                .map(r => r.properties.color)
+                .filter((c): c is string => c !== null)
+        )];
+
+        // 원본에 2개 이상의 색상이 있는데 번역본에서 1개로 줄어든 경우
+        if (originalColors.length >= 2 && translatedColors.length === 1) {
+            issues.push({
+                slideNumber: korean.slideNumber,
+                paragraphIndex: korean.paragraphIndex,
+                originalColors,
+                translatedColors,
+                originalText: korean.text.substring(0, 80),
+                translatedText: english.text.substring(0, 80),
+                description: `원본: ${originalColors.length}개 색상 사용 (${originalColors.join(', ')}) → 번역본: 단일 색상 (${translatedColors[0]})`,
+            });
+        }
+
+        // 원본의 색상 개수와 번역본의 색상 개수가 다른 경우 (더 일반적인 케이스)
+        if (originalColors.length > 0 && translatedColors.length > 0 &&
+            originalColors.length !== translatedColors.length) {
+            // 이미 위에서 2→1 케이스를 처리했으므로 그 외의 경우만
+            if (!(originalColors.length >= 2 && translatedColors.length === 1)) {
+                issues.push({
+                    slideNumber: korean.slideNumber,
+                    paragraphIndex: korean.paragraphIndex,
+                    originalColors,
+                    translatedColors,
+                    originalText: korean.text.substring(0, 80),
+                    translatedText: english.text.substring(0, 80),
+                    description: `색상 개수 불일치: 원본 ${originalColors.length}개 → 번역본 ${translatedColors.length}개`,
+                });
+            }
+        }
+    }
+
+    return issues;
+}
+
+/**
+ * 텍스트 오버플로우 가능성을 분석합니다.
+ * 번역 후 텍스트가 너무 길어져서 레이아웃이 깨질 가능성이 있는 경우를 감지합니다.
+ * 
+ * 사용자 언급 문제:
+ * - 글자가 너무 커서 레이아웃이 깨지는 경우
+ */
+function analyzeTextOverflow(
+    mappings: { korean: TextItem; english: TextItem }[]
+): TextOverflowIssue[] {
+    const issues: TextOverflowIssue[] = [];
+
+    for (const { korean, english } of mappings) {
+        const originalLength = korean.text.length;
+        const translatedLength = english.text.length;
+
+        // 텍스트가 너무 짧으면 의미없음
+        if (originalLength < 5) continue;
+
+        const expansionRatio = translatedLength / originalLength;
+
+        // 확장 비율에 따른 심각도 판별
+        // 일반적으로 한글→영어 번역 시 1.5배 정도까지는 허용
+        let severity: 'minor' | 'moderate' | 'severe' | null = null;
+
+        if (expansionRatio > 3.0) {
+            severity = 'severe';    // 3배 이상 확장: 심각
+        } else if (expansionRatio > 2.0) {
+            severity = 'moderate';  // 2배 이상 확장: 중간
+        } else if (expansionRatio > 1.5) {
+            severity = 'minor';     // 1.5배 이상 확장: 경미
+        }
+
+        if (severity) {
+            issues.push({
+                slideNumber: korean.slideNumber,
+                paragraphIndex: korean.paragraphIndex,
+                originalLength,
+                translatedLength,
+                expansionRatio,
+                originalText: korean.text.substring(0, 60),
+                translatedText: english.text.substring(0, 60),
+                severity,
+            });
+        }
+    }
+
+    return issues;
+}
+
+/**
+ * 단어 중간 줄바꿈 문제를 분석합니다.
+ * 영어 번역에서 단어가 중간에 잘려서 줄바꿈된 경우를 감지합니다.
+ * 
+ * 사용자 언급 문제:
+ * - "safety leadership guide"가 "safety leaders\nhip guide"로 잘리는 경우
+ */
+function analyzeWordBreaks(
+    mappings: { korean: TextItem; english: TextItem }[]
+): WordBreakIssue[] {
+    const issues: WordBreakIssue[] = [];
+
+    // 영어 단어가 줄바꿈으로 잘린 패턴을 감지
+    // 예: "leaders\nhip" → "leadership"이 잘린 것
+    const wordBreakPattern = /([a-zA-Z]+)\n([a-zA-Z]+)/g;
+
+    for (const { korean, english } of mappings) {
+        const text = english.text;
+        let match;
+
+        while ((match = wordBreakPattern.exec(text)) !== null) {
+            const beforeBreak = match[1];
+            const afterBreak = match[2];
+            const possibleWord = beforeBreak + afterBreak;
+
+            // 잠재적으로 잘린 단어가 3글자 이상이어야 의미있음
+            if (possibleWord.length >= 4) {
+                // 알려진 영어 단어 패턴인지 간단히 체크 (더 정교한 사전 검사도 가능)
+                // 여기서는 기본적인 휴리스틱 사용
+                issues.push({
+                    slideNumber: english.slideNumber,
+                    paragraphIndex: english.paragraphIndex,
+                    brokenWord: possibleWord,
+                    beforeBreak,
+                    afterBreak,
+                    suggestion: `"${possibleWord}"가 줄바꿈으로 잘렸을 수 있습니다. 단어 단위로 줄바꿈을 권장합니다.`,
+                });
+            }
+        }
+    }
+
+    return issues;
+}
+

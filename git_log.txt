@@ -1,0 +1,9 @@
+﻿527ec26 fix(ppt): Fix removeChild error by checking parentNode
+45559af feat(ppt): Add highlight/background color preservation (yellow etc)
+983d67b feat(ppt): Add underline and color preservation, adjust font scaling
+8107bf8 fix(ppt): Improve style preservation (bold/color), fix word wrap, add br tag support
+3e589b7 ?낅뜲?댄듃
+6c74724 feat: Apply dynamic font scaling, updated prompt rules, and spacing normalization
+d0fddba fix: Revert to gemini-2.0-flash-exp (3.0 not found)
+bda5bb2 Improve PPT translation: Fix fonts, terminology, casing, and update model
+9f1dfd5 feat: Vite 湲곕컲 React ?꾨줈?앺듃 珥덇린 ?ㅼ젙 諛?踰덉뿭 諛?????紐⑸줉 而댄룷?뚰듃 異붽?

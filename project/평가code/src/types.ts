@@ -147,6 +147,65 @@ export interface SpecialCharIssue {
     missingChars: string[];
 }
 
+/**
+ * 부분 스타일 문제 - 일부만 볼드/색상이어야 하는데 전체가 적용된 경우
+ */
+export interface PartialStyleIssue {
+    slideNumber: number;
+    paragraphIndex: number;
+    type: 'partial_bold' | 'partial_color' | 'partial_italic';
+    originalText: string;
+    translatedText: string;
+    originalStyleDistribution: {
+        styled: number;  // 스타일이 적용된 Run 개수
+        total: number;   // 전체 Run 개수
+    };
+    translatedStyleDistribution: {
+        styled: number;
+        total: number;
+    };
+    description: string;
+}
+
+/**
+ * 단어 중간 줄바꿈 문제 - 단어가 중간에 잘려서 줄바꿈된 경우
+ */
+export interface WordBreakIssue {
+    slideNumber: number;
+    paragraphIndex: number;
+    brokenWord: string;       // 잘린 단어 (예: "leadership")
+    beforeBreak: string;      // 줄바꿈 전 부분 (예: "leaders")
+    afterBreak: string;       // 줄바꿈 후 부분 (예: "hip guide")
+    suggestion: string;       // 권장 줄바꿈 위치
+}
+
+/**
+ * 색상 분포 문제 - 원본의 다중 색상이 번역본에서 단일 색상으로 변경된 경우
+ */
+export interface ColorDistributionIssue {
+    slideNumber: number;
+    paragraphIndex: number;
+    originalColors: string[];    // 원본에서 사용된 색상들
+    translatedColors: string[];  // 번역본에서 사용된 색상들
+    originalText: string;
+    translatedText: string;
+    description: string;
+}
+
+/**
+ * 텍스트 오버플로우 문제 - 글자가 너무 길어서 텍스트 박스를 벗어나는 경우
+ */
+export interface TextOverflowIssue {
+    slideNumber: number;
+    paragraphIndex: number;
+    originalLength: number;     // 원본 텍스트 길이
+    translatedLength: number;   // 번역 텍스트 길이
+    expansionRatio: number;     // 확장 비율 (번역/원본)
+    originalText: string;
+    translatedText: string;
+    severity: 'minor' | 'moderate' | 'severe';
+}
+
 export interface TableOverflow {
     slideNumber: number;
     rowIndex: number;
@@ -163,12 +222,18 @@ export interface ComparisonResult {
         langAttributeIssues: LangAttributeIssue[];
         specialCharIssues: SpecialCharIssue[];
         tableOverflows: TableOverflow[];
+        // 새로 추가된 검증 항목들
+        partialStyleIssues: PartialStyleIssue[];
+        colorDistributionIssues: ColorDistributionIssue[];
+        textOverflowIssues: TextOverflowIssue[];
     };
     translation: {
         glossaryMismatches: GlossaryMatchResult[];
         termInconsistencies: TermInconsistency[];
         caseViolations: CaseViolation[];
         romanNumeralIssues: RomanNumeralIssue[];
+        // 새로 추가된 검증 항목
+        wordBreakIssues: WordBreakIssue[];
     };
 }
 
