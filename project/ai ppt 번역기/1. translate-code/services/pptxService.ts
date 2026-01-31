@@ -147,13 +147,13 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
     // 번역된 텍스트 길이 (태그 제외)
     const translatedLength = text.replace(/<[^>]*>/g, '').length;
 
-    // 동적 스케일 팩터 계산: 텍스트가 늘어난 비율에 따라 폰트 축소
-    // 최소 0.7 (70%), 최대 1.0 (축소만, 확대 안함)
-    // 텍스트가 30% 이상 증가한 경우에만 축소 적용
+    // 동적 스케일 팩터 계산
     let scaleFactor = 1.0;
-    if (originalLength && originalLength > 0 && translatedLength > originalLength * 1.3) {
+    // 텍스트가 50자 미만(제목 등)이면 스케일링 하지 않음
+    if (originalLength && originalLength > 50 && translatedLength > originalLength * 1.2) {
         const ratio = originalLength / translatedLength;
-        scaleFactor = Math.max(0.7, Math.min(1.0, ratio));
+        // 최소 0.85 (85%)까지만 축소 (너무 작아지는 것 방지)
+        scaleFactor = Math.max(0.85, Math.min(1.0, ratio));
     }
 
     // 재귀적으로 DOM 트리를 순회하며 스타일 적용
@@ -207,27 +207,29 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 rPr.removeAttribute('u');
             }
 
-            // Helper to insert correctly in rPr order
+            // Helper to insert correctly in rPr order (Prepend Strategy)
             const insertInRPr = (newChild: Node) => {
-                // OOXML order: ... solidFill ... highlight ... latin/ea/cs ...
-                // We want to insert explicit styles (color/highlight) effectively.
-                // Safest is to insert before font definitions if they exist.
-                const fontTags = ['latin', 'ea', 'cs', 'sym'];
-                let refNode: Node | null = null;
-                for (const tag of fontTags) {
-                    const found = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, tag)[0];
-                    if (found) {
-                        refNode = found;
-                        break;
-                    }
-                }
-
-                if (refNode) {
-                    rPr.insertBefore(newChild, refNode);
+                // We PREPEND to ensure styles come before font definitions (latin, ea, etc.)
+                // OOXML Schema requires: solidFill, highlight, fonts.
+                if (rPr.firstChild) {
+                    rPr.insertBefore(newChild, rPr.firstChild);
                 } else {
                     rPr.appendChild(newChild);
                 }
             };
+
+            // Highlight(배경색) 적용 (highlight > srgbClr)
+            const existingHighlight = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
+            if (existingHighlight && existingHighlight.parentNode === rPr) {
+                rPr.removeChild(existingHighlight);
+            }
+            if (styles.highlight) {
+                const highlightEl = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:highlight');
+                const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
+                srgbClr.setAttribute('val', styles.highlight);
+                highlightEl.appendChild(srgbClr);
+                insertInRPr(highlightEl);
+            }
 
             // Color 적용 (solidFill > srgbClr)
             // 기존 solidFill 제거 후 새로 생성
@@ -241,19 +243,6 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 srgbClr.setAttribute('val', styles.color);
                 solidFill.appendChild(srgbClr);
                 insertInRPr(solidFill);
-            }
-
-            // Highlight(배경색) 적용 (highlight > srgbClr)
-            const existingHighlight = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
-            if (existingHighlight && existingHighlight.parentNode === rPr) {
-                rPr.removeChild(existingHighlight);
-            }
-            if (styles.highlight) {
-                const highlightEl = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:highlight');
-                const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
-                srgbClr.setAttribute('val', styles.highlight);
-                highlightEl.appendChild(srgbClr);
-                insertInRPr(highlightEl);
             }
 
             rPr.setAttribute('lang', 'en-US');

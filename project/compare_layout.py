@@ -91,8 +91,8 @@ def analyze_ppt_comprehensive(ppt_path, output_lines):
 
 # Main execution
 original_file = r"c:\Users\nomus\Desktop\구글 동기화\안티그래비티\테스트\project\ai ppt 번역기\2. ppt\test_file.pptx"
-translated_file = r"c:\Users\nomus\Desktop\구글 동기화\안티그래비티\테스트\project\ai ppt 번역기\2. ppt\test_file_p1-2_en (3).pptx"
-output_report = r"c:\Users\nomus\Desktop\구글 동기화\안티그래비티\테스트\project\ai ppt 번역기\2. ppt\layout_comparison_report_v3.txt"
+translated_file = r"c:\Users\nomus\Desktop\구글 동기화\안티그래비티\테스트\project\ai ppt 번역기\2. ppt\test_file_p1-2_en (4).pptx"
+output_report = r"c:\Users\nomus\Desktop\구글 동기화\안티그래비티\테스트\project\ai ppt 번역기\2. ppt\layout_comparison_report_v4.txt"
 
 output_lines = []
 output_lines.append("PPT LAYOUT COMPARISON REPORT")
