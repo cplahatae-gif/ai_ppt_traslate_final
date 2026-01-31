@@ -40,6 +40,8 @@ Translate an array of Korean text fragments into professional English while STRI
     - The <highlight:XXXXXX> tag is for background/highlight color (e.g., <highlight:FFFF00> for yellow). Keep the exact code.
     - If the original text has NO tags, the translation MUST have NO tags.
     - If the original has <b>only part</b> bolded, keep ONLY that part bolded.
+    - **CRITICAL: Do NOT add <br> or newline characters unless they exist in the original text.**
+    - Do NOT split single sentences into multiple lines.
     - Do NOT add new tags that don't exist in the original.
     - Do NOT remove existing tags from the original.
     - Do NOT change the order or nesting of tags.

@@ -207,6 +207,28 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 rPr.removeAttribute('u');
             }
 
+            // Helper to insert correctly in rPr order
+            const insertInRPr = (newChild: Node) => {
+                // OOXML order: ... solidFill ... highlight ... latin/ea/cs ...
+                // We want to insert explicit styles (color/highlight) effectively.
+                // Safest is to insert before font definitions if they exist.
+                const fontTags = ['latin', 'ea', 'cs', 'sym'];
+                let refNode: Node | null = null;
+                for (const tag of fontTags) {
+                    const found = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, tag)[0];
+                    if (found) {
+                        refNode = found;
+                        break;
+                    }
+                }
+
+                if (refNode) {
+                    rPr.insertBefore(newChild, refNode);
+                } else {
+                    rPr.appendChild(newChild);
+                }
+            };
+
             // Color 적용 (solidFill > srgbClr)
             // 기존 solidFill 제거 후 새로 생성
             const existingSolidFill = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill')[0];
@@ -218,7 +240,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
                 srgbClr.setAttribute('val', styles.color);
                 solidFill.appendChild(srgbClr);
-                rPr.appendChild(solidFill);
+                insertInRPr(solidFill);
             }
 
             // Highlight(배경색) 적용 (highlight > srgbClr)
@@ -231,7 +253,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
                 srgbClr.setAttribute('val', styles.highlight);
                 highlightEl.appendChild(srgbClr);
-                rPr.appendChild(highlightEl);
+                insertInRPr(highlightEl);
             }
 
             rPr.setAttribute('lang', 'en-US');
