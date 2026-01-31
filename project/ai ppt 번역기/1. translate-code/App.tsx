@@ -37,7 +37,7 @@ const App: React.FC = () => {
     const loadResources = async () => {
       try {
         // Load prompt file
-        const promptRes = await fetch('/prompt.txt');
+        const promptRes = await fetch('/guide.md');
         if (promptRes.ok) {
           const promptText = await promptRes.text();
           setPromptInstruction(promptText);
