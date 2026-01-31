@@ -55,31 +55,38 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
         const paragraphNodes = Array.from(xmlDoc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'));
 
         paragraphNodes.forEach((pNode, index) => {
-            // 문단 내의 Run(<a:r>)들을 순회하며 스타일 정보를 확인
-            const runNodes = Array.from(pNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'r'));
-            if (runNodes.length === 0) return;
+            // 문단 내의 노드(Run, Break)들을 순회하며 텍스트와 줄바꿈 추출
+            // getElementsByTagNameNS 대신 childNodes를 순회해야 순서를 지킬 수 있음
+            const childNodes = Array.from(pNode.childNodes);
+            if (childNodes.length === 0) return;
 
             let formattedText = '';
             let hasText = false;
 
-            runNodes.forEach(rNode => {
-                const tNode = rNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 't')[0];
-                const text = tNode?.textContent || '';
-                if (!text) return;
+            childNodes.forEach(child => {
+                if (child.nodeName === 'a:r') {
+                    const rNode = child as Element;
+                    const tNode = rNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 't')[0];
+                    const text = tNode?.textContent || '';
+                    if (!text) return;
 
-                hasText = true;
+                    hasText = true;
 
-                // 스타일 확인 (rPr)
-                const rPr = rNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr')[0];
-                const isBold = rPr?.getAttribute('b') === '1';
-                const isItalic = rPr?.getAttribute('i') === '1';
+                    // 스타일 확인 (rPr)
+                    const rPr = rNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr')[0];
+                    const isBold = rPr?.getAttribute('b') === '1';
+                    const isItalic = rPr?.getAttribute('i') === '1';
 
-                let chunk = text;
-                // 태그 감싸기 (Gemini가 인식하도록)
-                if (isBold) chunk = `<b>${chunk}</b>`;
-                if (isItalic) chunk = `<i>${chunk}</i>`;
+                    let chunk = text;
+                    // 태그 감싸기 (Gemini가 인식하도록)
+                    if (isBold) chunk = `<b>${chunk}</b>`;
+                    if (isItalic) chunk = `<i>${chunk}</i>`;
 
-                formattedText += chunk;
+                    formattedText += chunk;
+                } else if (child.nodeName === 'a:br') {
+                    formattedText += '<br>';
+                    hasText = true;
+                }
             });
 
             if (hasText && formattedText.trim() !== '') {
@@ -141,16 +148,14 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
             if (defaultProps) {
                 rPr = defaultProps.cloneNode(true) as Element;
 
-                // DYNAMIC FONT SCALING: 텍스트 길이 비율에 따라 동적 축소
+                // DYNAMIC FONT SCALING
                 const currentSize = parseInt(rPr.getAttribute('sz') || '0');
                 if (currentSize > 0) {
                     const newSize = Math.floor(currentSize * scaleFactor);
-                    // 최소 폰트 크기 800 (약 8pt) 이상 유지
                     rPr.setAttribute('sz', String(Math.max(newSize, 800)));
                 }
 
-                // TEXT SPACING NORMALIZATION: Convert narrow/very narrow (negative spc) to standard (0)
-                // This prevents English text overlap when original Korean used tight spacing
+                // TEXT SPACING CLEAR
                 const currentSpc = parseInt(rPr.getAttribute('spc') || '0');
                 if (currentSpc < 0) {
                     rPr.setAttribute('spc', '0');
@@ -159,9 +164,18 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 rPr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:rPr");
             }
 
-            // Apply accumulated styles
-            if (styles.b) rPr.setAttribute('b', '1');
-            if (styles.i) rPr.setAttribute('i', '1');
+            // Apply styles based strictly on tags (override defaultProps)
+            if (styles.b) {
+                rPr.setAttribute('b', '1');
+            } else {
+                rPr.removeAttribute('b');
+            }
+
+            if (styles.i) {
+                rPr.setAttribute('i', '1');
+            } else {
+                rPr.removeAttribute('i');
+            }
 
             rPr.setAttribute('lang', 'en-US');
             rPr.setAttribute('dirty', '0');
@@ -176,10 +190,17 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
 
         } else if (node.nodeType === Node.ELEMENT_NODE) {
             const el = node as Element;
+            const tagName = el.tagName.toLowerCase();
+
+            if (tagName === 'br') {
+                // 줄바꿈 (<a:br>) 생성
+                const brNode = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:br");
+                nodes.push(brNode);
+                return;
+            }
+
             const newStyles = { ...styles };
 
-            // 태그 확인 (대소문자 무관)
-            const tagName = el.tagName.toLowerCase();
             if (tagName === 'b' || tagName === 'strong') newStyles.b = true;
             if (tagName === 'i' || tagName === 'em') newStyles.i = true;
 
@@ -243,16 +264,38 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
                 parent = parent.parentElement;
             }
 
-            // 기존 Run들을 모두 제거
+            // 기존 Run 및 Break 모두 제거
+            // r 뿐만 아니라 br도 제거해야 함 (pNode의 자식 중 r와 br을 모두 삭제)
+            // 간단하게: endParaRPr 전까지 모든 자식을 지우고 다시 채움?
+            // 아니면 r와 br만 찾아서 지움.
+            // 안전하게: r과 br 태그만 찾아서 삭제
+            const children = Array.from(pNode.childNodes);
+            const targetNodes = children.filter(n => n.nodeName === 'a:r' || n.nodeName === 'a:br');
+
+            // 대표 스타일(Representative RPr) 찾기: 공백이 아닌 실제 텍스트가 있는 첫 번째 Run의 스타일 사용
+            // 이렇게 해야 "앞의 투명/색깔 불릿" 스타일이 전체를 덮어쓰는 문제 해결 가능
+            let representativeRPr: Element | undefined;
+
             const runNodes = Array.from(pNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'r'));
+            for (const r of runNodes) {
+                const text = r.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 't')[0]?.textContent || '';
+                if (text.trim().length > 0) {
+                    representativeRPr = r.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr')[0];
+                    break;
+                }
+            }
+            // 텍스트 있는 Run이 없으면 그냥 첫 번째 사용
+            if (!representativeRPr) {
+                representativeRPr = runNodes[0]?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr')[0];
+            }
 
-            // 첫 번째 rPr (폰트 사이즈 등 유지를 위해 저장) - 가장 대표 스타일로 간주
-            const firstRPr = runNodes[0]?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr')[0]?.cloneNode(true) as Element;
+            // 스타일 클론
+            const defaultProps = representativeRPr ? representativeRPr.cloneNode(true) as Element : undefined;
 
-            runNodes.forEach(r => pNode.removeChild(r));
+            targetNodes.forEach(n => pNode.removeChild(n));
 
             // 새로운 Run 생성 및 삽입 (원본 길이 전달하여 동적 스케일링)
-            const newNodes = createRunsFromTaggedText(xmlDoc, item.text, firstRPr, item.originalLength);
+            const newNodes = createRunsFromTaggedText(xmlDoc, item.text, defaultProps, item.originalLength);
 
             // endParaRPr (문단 끝 속성) 앞에 삽입하거나 append
             const endParaRunPr = pNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'endParaRPr')[0];

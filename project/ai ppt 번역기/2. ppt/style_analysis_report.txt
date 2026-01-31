@@ -1,0 +1,424 @@
+
+--- Analyzing project/ai ppt 번역기/2. ppt/R2_Safety Leadership Guide_2602.pptx Slide 1 ---
+
+[Shape ID: 3]
+  Word Wrap: True
+  Paragraph 0:
+
+[Shape ID: 4]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'MONTHLY SAFETY INSIGHT' (Bold: True, Color: FFC600, Size: 21.0)
+
+[Shape ID: 5]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'SAFETY' (Bold: True, Color: FFFFFF, Size: 60.0)
+    Run 1: 'LEADERSHIP' (Bold: True, Color: FFFFFF, Size: 60.0)
+    Run 2: 'GUIDE' (Bold: True, Color: FFFFFF, Size: 60.0)
+
+[Shape ID: 9]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'FEB' (Bold: True, Color: 00205B, Size: 60.0)
+  Paragraph 1:
+    Run 0: '2026' (Bold: True, Color: 00205B, Size: 60.0)
+
+[Shape ID: 11]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'Contents' (Bold: True, Color: FFC600, Size: 33.0)
+
+[Shape ID: 12]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '01. ' (Bold: True, Color: Theme/None, Size: 13.0)
+    Run 1: '핵심 안전 지표' (Bold: True, Color: Theme/None, Size: 13.0)
+
+[Shape ID: 14]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '02. 안전 Insight : VFL' (Bold: True, Color: Theme/None, Size: 13.0)
+
+[Shape ID: 15]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '03. 1' (Bold: True, Color: Theme/None, Size: 13.0)
+    Run 1: '월 ' (Bold: True, Color: Theme/None, Size: 13.0)
+    Run 2: '안전 캠페인 News' (Bold: True, Color: Theme/None, Size: 13.0)
+
+[Shape ID: 16]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '04. 경영진 안전 리더십 ' (Bold: True, Color: Theme/None, Size: 13.0)
+    Run 1: '실천 ' (Bold: True, Color: Theme/None, Size: 13.0)
+    Run 2: '가이드' (Bold: True, Color: Theme/None, Size: 13.0)
+
+--- Analyzing project/ai ppt 번역기/2. ppt/R2_Safety Leadership Guide_2602_p1-8_en.pptx Slide 1 ---
+
+[Shape ID: 3]
+  Word Wrap: True
+  Paragraph 0:
+
+[Shape ID: 4]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'MONTHLY SAFETY INSIGHT' (Bold: True, Color: FFC600, Size: 17.85)
+
+[Shape ID: 5]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'SAFETY' (Bold: True, Color: FFFFFF, Size: 51.0)
+    Run 1: 'LEADERSHIP' (Bold: True, Color: FFFFFF, Size: 51.0)
+    Run 2: 'GUIDE' (Bold: True, Color: FFFFFF, Size: 51.0)
+
+[Shape ID: 9]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'FEB' (Bold: True, Color: 00205B, Size: 51.0)
+  Paragraph 1:
+    Run 0: '2026' (Bold: True, Color: 00205B, Size: 51.0)
+
+[Shape ID: 11]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'Contents' (Bold: True, Color: FFC600, Size: 28.05)
+
+[Shape ID: 12]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '01. ' (Bold: True, Color: Theme/None, Size: 11.05)
+    Run 1: 'Key Safety Indicators' (Bold: True, Color: Theme/None, Size: 11.05)
+
+[Shape ID: 14]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '02. Safety Insight: VFL' (Bold: True, Color: Theme/None, Size: 11.05)
+
+[Shape ID: 15]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '03. January ' (Bold: True, Color: Theme/None, Size: 11.05)
+    Run 1: 'Safety Campaign News' (Bold: True, Color: Theme/None, Size: 11.05)
+
+[Shape ID: 16]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '04. Executive Safety Leadership ' (Bold: True, Color: Theme/None, Size: 11.05)
+    Run 1: 'Action ' (Bold: True, Color: Theme/None, Size: 11.05)
+    Run 2: 'Guide' (Bold: True, Color: Theme/None, Size: 11.05)
+
+--- Analyzing project/ai ppt 번역기/2. ppt/R2_Safety Leadership Guide_2602.pptx Slide 5 ---
+
+[Shape ID: 38]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '임직원이 해결하기 힘든 장벽을 제거해야 합니다' (Bold: True, Color: FFC600, Size: 16.5)
+    Run 1: '.' (Bold: True, Color: FFC600, Size: 16.5)
+
+[Shape ID: 48]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '현장의 위험 요인 중에는 작업자의 노력만으로 해결할 수 없는 것들이 있습니다' (Bold: None, Color: FFFFFF, Size: 14.0)
+    Run 1: '.' (Bold: None, Color: FFFFFF, Size: 14.0)
+  Paragraph 1:
+    Run 0: '이러한 ' (Bold: None, Color: FFFFFF, Size: 14.0)
+    Run 1: '구조적 문제' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 2: '(' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 3: '예산' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 4: ', ' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 5: '인력' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 6: ', ' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 7: '시스템' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 8: ')' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 9: '에 대해 경영진이 직접 개입하여 해결책을 제시할 때' (Bold: None, Color: FFFFFF, Size: 14.0)
+    Run 10: ', ' (Bold: None, Color: FFFFFF, Size: 14.0)
+    Run 11: '구성원들은 ' (Bold: None, Color: FFFFFF, Size: 14.0)
+    Run 12: '‘' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 13: '리더가 안전에 진심' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 14: '’' (Bold: True, Color: FFFFFF, Size: 14.0)
+    Run 15: '이라고 느끼게 됩니다' (Bold: None, Color: FFFFFF, Size: 14.0)
+    Run 16: '.' (Bold: None, Color: FFFFFF, Size: 14.0)
+
+[Shape ID: 24]
+  Word Wrap: None
+  Paragraph 0:
+    Run 0: 'Insight' (Bold: True, Color: Theme/None, Size: 12.0)
+
+[Shape ID: 26]
+  Word Wrap: False
+  Paragraph 0:
+    Run 0: 'SAMPYO Industry · Safety Leadership ' (Bold: None, Color: 78828C, Size: 9.0)
+    Run 1: '·SPI SHE' (Bold: None, Color: 78828C, Size: 9.0)
+    Run 2: '팀' (Bold: None, Color: 78828C, Size: 9.0)
+    Run 3: ' · 202' (Bold: None, Color: 78828C, Size: 9.0)
+    Run 4: '6' (Bold: None, Color: 78828C, Size: 9.0)
+    Run 5: '.1.2' (Bold: None, Color: 78828C, Size: 9.0)
+    Run 6: '6' (Bold: None, Color: 78828C, Size: 9.0)
+
+[Shape ID: 27]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: '경영진의 역할 ' (Bold: True, Color: 00205B, Size: 26.0)
+    Run 1: ': ' (Bold: True, Color: 00205B, Size: 26.0)
+    Run 2: '어려운 문제를 해결하십시오' (Bold: True, Color: 00205B, Size: 26.0)
+
+[Shape ID: 31]
+  Word Wrap: None
+  Paragraph 0:
+
+[Shape ID: 32]
+  Word Wrap: None
+  Paragraph 0:
+
+[Shape ID: 33]
+  Word Wrap: None
+  Paragraph 0:
+
+[Shape ID: 55]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 1: 'Issue' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 2: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 3: '1.' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 4: ' 예산' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 5: '/' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 6: '설비' (Bold: True, Color: DA252E, Size: 11.25)
+  Paragraph 1:
+    Run 0: '  ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 1: '“' (Bold: None, Color: 475569, Size: 11.25)
+    Run 2: '설비가 낡아서 센서가 자꾸 오작동해요' (Bold: None, Color: 475569, Size: 11.25)
+    Run 3: '. ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 4: '고치고 ' (Bold: None, Color: 475569, Size: 11.25)
+  Paragraph 2:
+    Run 0: '    ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 1: '싶어도 예산이 없어요' (Bold: None, Color: 475569, Size: 11.25)
+    Run 2: '.”' (Bold: None, Color: 475569, Size: 11.25)
+
+[Shape ID: 56]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 1: 'Issue' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 2: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 3: '2.' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 4: ' 시스템' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 5: '/' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 6: '절차' (Bold: True, Color: DA252E, Size: 11.25)
+  Paragraph 1:
+    Run 0: '  ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 1: '“' (Bold: None, Color: 475569, Size: 11.25)
+    Run 2: '공사 일정이 너무 빡빡해서 안전 절차' (Bold: None, Color: 475569, Size: 11.25)
+    Run 3: '(LOTO)' (Bold: None, Color: 475569, Size: 11.25)
+    Run 4: '를 ' (Bold: None, Color: 475569, Size: 11.25)
+  Paragraph 2:
+    Run 0: '둘 다 지키면 납기를 맞출 수 없어요' (Bold: None, Color: 475569, Size: 11.25)
+    Run 1: '.”' (Bold: None, Color: 475569, Size: 11.25)
+
+[Shape ID: 57]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 1: 'Issue' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 2: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 3: '3.' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 4: ' 인력' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 5: '/' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 6: '환경' (Bold: True, Color: DA252E, Size: 11.25)
+  Paragraph 1:
+    Run 0: '  ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 1: '“' (Bold: None, Color: 475569, Size: 11.25)
+    Run 2: '야간 작업 시 시야가 어둡고 인원이 부족해서 신호수를 둘 수가 없어요' (Bold: None, Color: 475569, Size: 11.25)
+    Run 3: '.”' (Bold: None, Color: 475569, Size: 11.25)
+
+[Shape ID: 60]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 1: '즉각적인 투자 결정' (Bold: True, Color: 2563EB, Size: 11.25)
+  Paragraph 1:
+    Run 0: '  ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 1: '“' (Bold: None, Color: 475569, Size: 11.25)
+    Run 2: '안전 예산은 최우선입니다' (Bold: None, Color: 475569, Size: 11.25)
+    Run 3: '. ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 4: '이번 달 내로 센서 교체를 승인하겠습니다' (Bold: None, Color: 475569, Size: 11.25)
+    Run 5: '.”' (Bold: None, Color: 475569, Size: 11.25)
+
+[Shape ID: 61]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 1: '프로세스 조정 및 권한 부여' (Bold: True, Color: 2563EB, Size: 11.25)
+  Paragraph 1:
+    Run 0: '  ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 1: '“' (Bold: None, Color: 475569, Size: 11.25)
+    Run 2: '공사 일정보다 안전이 먼저입니다' (Bold: None, Color: 475569, Size: 11.25)
+    Run 3: '. ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 4: '작업 중지 권한을 보장하고 일정을 조정하겠습니다' (Bold: None, Color: 475569, Size: 11.25)
+    Run 5: '.”' (Bold: None, Color: 475569, Size: 11.25)
+
+[Shape ID: 62]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 11.25)
+    Run 1: '인력 충원 및 환경 개선' (Bold: True, Color: 2563EB, Size: 11.25)
+  Paragraph 1:
+    Run 0: '  ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 1: '“' (Bold: None, Color: 475569, Size: 11.25)
+    Run 2: '조명을 ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 3: 'LED' (Bold: None, Color: 475569, Size: 11.25)
+    Run 4: '로 전면 교체하고' (Bold: None, Color: 475569, Size: 11.25)
+    Run 5: ', ' (Bold: None, Color: 475569, Size: 11.25)
+    Run 6: '야간 작업 시 추가 인력을 배치하겠습니다' (Bold: None, Color: 475569, Size: 11.25)
+    Run 7: '.”' (Bold: None, Color: 475569, Size: 11.25)
+
+[Shape ID: 7]
+  Word Wrap: False
+  Paragraph 0:
+    Run 0: '✅' (Bold: True, Color: 00B050, Size: 12.0)
+
+[Shape ID: 63]
+  Word Wrap: False
+  Paragraph 0:
+    Run 0: '✅' (Bold: True, Color: 00B050, Size: 12.0)
+
+[Shape ID: 64]
+  Word Wrap: False
+  Paragraph 0:
+    Run 0: '✅' (Bold: True, Color: 00B050, Size: 12.0)
+
+--- Analyzing project/ai ppt 번역기/2. ppt/R2_Safety Leadership Guide_2602_p1-8_en.pptx Slide 5 ---
+
+[Shape ID: 38]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'Barriers that employees cannot solve themselves must be removed.' (Bold: True, Color: FFC600, Size: 14.02)
+
+[Shape ID: 48]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'Some site risk factors cannot be resolved through worker effort alone.' (Bold: None, Color: FFFFFF, Size: 11.9)
+  Paragraph 1:
+    Run 0: 'When management directly intervenes in these ' (Bold: None, Color: FFFFFF, Size: 11.9)
+    Run 1: 'structural issues' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 2: '(' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 3: 'budget' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 4: ', ' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 5: 'human resources' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 6: ', ' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 7: 'system' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 8: ')' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 9: ' to provide solutions, members feel that ' (Bold: None, Color: FFFFFF, Size: 11.9)
+    Run 10: '‘' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 11: 'the leader is serious about safety' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 12: '’' (Bold: True, Color: FFFFFF, Size: 11.9)
+    Run 13: '.' (Bold: None, Color: FFFFFF, Size: 11.9)
+
+[Shape ID: 24]
+  Word Wrap: None
+  Paragraph 0:
+    Run 0: 'Insight' (Bold: True, Color: Theme/None, Size: 10.2)
+
+[Shape ID: 26]
+  Word Wrap: False
+  Paragraph 0:
+    Run 0: 'SAMPYO Industry · Safety Leadership · SPI SHE Team · 2026.1.26' (Bold: None, Color: 78828C, Size: 7.65)
+
+[Shape ID: 27]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: 'Role of Management ' (Bold: True, Color: 00205B, Size: 22.1)
+    Run 1: ': ' (Bold: True, Color: 00205B, Size: 22.1)
+    Run 2: 'Solve Difficult Problems' (Bold: True, Color: 00205B, Size: 22.1)
+
+[Shape ID: 31]
+  Word Wrap: None
+  Paragraph 0:
+
+[Shape ID: 32]
+  Word Wrap: None
+  Paragraph 0:
+
+[Shape ID: 33]
+  Word Wrap: None
+  Paragraph 0:
+
+[Shape ID: 55]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 1: 'Issue' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 2: ' ' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 3: '1.' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 4: ' Budget' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 5: '/' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 6: 'Equipment' (Bold: True, Color: DA252E, Size: 9.56)
+  Paragraph 1:
+    Run 0: '  “The equipment is old, so the sensors keep malfunctioning. Even if we want to fix it, ' (Bold: None, Color: 475569, Size: 9.56)
+  Paragraph 2:
+    Run 0: '    there is no budget.”' (Bold: None, Color: 475569, Size: 9.56)
+
+[Shape ID: 56]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 1: 'Issue' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 2: ' ' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 3: '2.' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 4: ' System' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 5: '/' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 6: 'Procedures' (Bold: True, Color: DA252E, Size: 9.56)
+  Paragraph 1:
+    Run 0: '  “The construction schedule is so tight that if we follow safety procedures (LOTO), ' (Bold: None, Color: 475569, Size: 9.56)
+  Paragraph 2:
+    Run 0: 'we cannot meet the delivery deadline.”' (Bold: None, Color: 475569, Size: 9.56)
+
+[Shape ID: 57]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' ' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 1: 'Issue' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 2: ' ' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 3: '3.' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 4: ' Human Resources' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 5: '/' (Bold: True, Color: DA252E, Size: 9.56)
+    Run 6: 'Environment' (Bold: True, Color: DA252E, Size: 9.56)
+  Paragraph 1:
+    Run 0: '  “Visibility is poor during night work and there is a shortage of personnel, so we cannot assign signalers.”' (Bold: None, Color: 475569, Size: 9.56)
+
+[Shape ID: 60]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' Immediate Investment Decision' (Bold: True, Color: DA252E, Size: 9.56)
+  Paragraph 1:
+    Run 0: '  “The safety budget is our top priority. I will approve sensor replacement within this month.”' (Bold: None, Color: 475569, Size: 9.56)
+
+[Shape ID: 61]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' Process Adjustment and Empowerment' (Bold: True, Color: DA252E, Size: 9.56)
+  Paragraph 1:
+    Run 0: '  “Safety comes before the construction schedule. I will guarantee the right to stop work and adjust the schedule.”' (Bold: None, Color: 475569, Size: 9.56)
+
+[Shape ID: 62]
+  Word Wrap: True
+  Paragraph 0:
+    Run 0: ' Recruitment of Personnel and Environmental Improvement' (Bold: True, Color: DA252E, Size: 9.56)
+  Paragraph 1:
+    Run 0: '  “I will completely replace the lighting with LEDs and assign additional personnel for night work.”' (Bold: None, Color: 475569, Size: 9.56)
+
+[Shape ID: 7]
+  Word Wrap: False
+  Paragraph 0:
+    Run 0: '✅' (Bold: True, Color: 00B050, Size: 10.2)
+
+[Shape ID: 63]
+  Word Wrap: False
+  Paragraph 0:
+    Run 0: '✅' (Bold: True, Color: 00B050, Size: 10.2)
+
+[Shape ID: 64]
+  Word Wrap: False
+  Paragraph 0:
+    Run 0: '✅' (Bold: True, Color: 00B050, Size: 10.2)

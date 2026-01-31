@@ -29,13 +29,13 @@ const translateBatch = async (batch: string[], promptInstruction?: string, gloss
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
             let systemInstruction = `You are an expert translator for PowerPoint presentations. 
-Translate an array of Korean text fragments into professional English while STRICTLY preserving HTML-like formatting tags (<b>, </b>, <i>, </i>).
+Translate an array of Korean text fragments into professional English while STRICTLY preserving HTML-like formatting tags (<b>, </b>, <i>, </i>, <br>).
 
 # Critical Rules
 1. **One-to-One Mapping**: The input array has ${batch.length} items. The output MUST have exactly ${batch.length} items.
 2. **Order Preservation**: Do NOT reorder, merge, or split items.
 3. **Tag Preservation - CRITICAL**: 
-    - Keep all <b>, </b>, <i>, </i> tags in their EXACT relative positions.
+    - Keep all <b>, </b>, <i>, </i>, <br> tags in their EXACT relative positions.
     - If the original text has NO tags, the translation MUST have NO tags.
     - If the original has <b>only part</b> bolded, keep ONLY that part bolded.
     - Do NOT add new tags that don't exist in the original.
