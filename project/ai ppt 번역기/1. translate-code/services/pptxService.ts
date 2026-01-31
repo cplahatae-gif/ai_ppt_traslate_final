@@ -210,7 +210,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
             // Color 적용 (solidFill > srgbClr)
             // 기존 solidFill 제거 후 새로 생성
             const existingSolidFill = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill')[0];
-            if (existingSolidFill) {
+            if (existingSolidFill && existingSolidFill.parentNode === rPr) {
                 rPr.removeChild(existingSolidFill);
             }
             if (styles.color) {
@@ -223,7 +223,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
 
             // Highlight(배경색) 적용 (highlight > srgbClr)
             const existingHighlight = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
-            if (existingHighlight) {
+            if (existingHighlight && existingHighlight.parentNode === rPr) {
                 rPr.removeChild(existingHighlight);
             }
             if (styles.highlight) {
