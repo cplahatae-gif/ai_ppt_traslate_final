@@ -133,33 +133,11 @@ const App: React.FC = () => {
         throw new Error(`번역 개수 불일치 오류가 발생했습니다.`);
       }
 
-      // 형광펜 안전 모드: 형광펜 비율이 비정상적으로 높으면 제거
-      const safeTranslatedTexts = translatedTexts.map((text, index) => {
-        const original = originalTexts[index];
-
-        // 원본과 번역본의 형광펜 비율 계산
-        const getHighlightRatio = (str: string) => {
-          const plainText = str.replace(/<[^>]*>/g, '');
-          const highlightMatch = str.match(/<highlight:[^>]*>([^<]*)<\/highlight>/g);
-          if (!highlightMatch) return 0;
-          const highlightedText = highlightMatch.join('').replace(/<[^>]*>/g, '');
-          return plainText.length > 0 ? highlightedText.length / plainText.length : 0;
-        };
-
-        const origRatio = getHighlightRatio(original);
-        const transRatio = getHighlightRatio(text);
-
-        // 번역본의 형광펜 비율이 원본의 2배 이상이면 형광펜 제거
-        if (transRatio > origRatio * 2 && transRatio > 0.2) {
-          console.log(`[Safety Mode] Highlight stripped: orig=${(origRatio * 100).toFixed(1)}%, trans=${(transRatio * 100).toFixed(1)}%`);
-          return text.replace(/<highlight:[^>]*>([^<]*)<\/highlight>/g, '$1');
-        }
-        return text;
-      });
+      // 형광펜 기능 제거됨 - 안전 모드 코드 불필요
 
       const translatedItems: TextItem[] = textItems.map((item, index) => ({
         ...item,
-        text: safeTranslatedTexts[index],
+        text: translatedTexts[index],
         originalLength: originalTexts[index].replace(/<[^>]*>/g, '').length // 원본 길이 저장 (태그 제외)
       }));
 

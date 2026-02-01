@@ -70,7 +70,6 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
                 i: boolean;
                 u: boolean;
                 color: string;
-                highlight: string;
             }
             let runBuffer: RunStyle[] = [];
 
@@ -84,8 +83,7 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
                     const isSame = current.b === next.b &&
                         current.i === next.i &&
                         current.u === next.u &&
-                        current.color === next.color &&
-                        current.highlight === next.highlight;
+                        current.color === next.color;
 
                     if (isSame) {
                         current.text += next.text;
@@ -101,7 +99,7 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
 
             const tagRun = (run: RunStyle) => {
                 let chunk = run.text;
-                if (run.highlight) chunk = `<highlight:${run.highlight}>${chunk}</highlight>`;
+                // highlight 기능 제거됨
                 if (run.color) chunk = `<color:${run.color}>${chunk}</color>`;
                 if (run.u) chunk = `<u>${chunk}</u>`;
                 if (run.i) chunk = `<i>${chunk}</i>`;
@@ -133,17 +131,9 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
                         }
                     }
 
-                    // 하이라이트(배경색) 추출 (highlight > srgbClr)
-                    let highlight = '';
-                    const highlightEl = rPr?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
-                    if (highlightEl) {
-                        const srgbClr = highlightEl.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'srgbClr')[0];
-                        if (srgbClr) {
-                            highlight = srgbClr.getAttribute('val') || '';
-                        }
-                    }
+                    // highlight(배경색) 기능 제거됨 - 추출하지 않음
 
-                    runBuffer.push({ text, b, i, u, color, highlight });
+                    runBuffer.push({ text, b, i, u, color });
 
                 } else if (child.nodeName === 'a:br') {
                     formattedText += flushBuffer();
@@ -199,7 +189,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
     }
 
     // 재귀적으로 DOM 트리를 순회하며 스타일 적용
-    const traverse = (node: Node, styles: { b: boolean, i: boolean, u: boolean, color: string, highlight: string }) => {
+    const traverse = (node: Node, styles: { b: boolean, i: boolean, u: boolean, color: string }) => {
         if (node.nodeType === Node.TEXT_NODE) {
             const content = node.textContent || '';
             if (!content) return;
@@ -260,18 +250,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 }
             };
 
-            // Highlight(배경색) 적용 (highlight > srgbClr)
-            const existingHighlight = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'highlight')[0];
-            if (existingHighlight && existingHighlight.parentNode === rPr) {
-                rPr.removeChild(existingHighlight);
-            }
-            if (styles.highlight) {
-                const highlightEl = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:highlight');
-                const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
-                srgbClr.setAttribute('val', styles.highlight);
-                highlightEl.appendChild(srgbClr);
-                insertInRPr(highlightEl);
-            }
+            // Highlight(배경색) 기능 제거됨
 
             // Color 적용 (solidFill > srgbClr)
             // 기존 solidFill 제거 후 새로 생성
@@ -320,10 +299,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                 newStyles.color = tagName.substring(6).toUpperCase();
             }
 
-            // <highlight:RRGGBB> 태그 처리
-            if (tagName.startsWith('highlight:')) {
-                newStyles.highlight = tagName.substring(10).toUpperCase();
-            }
+            // <highlight:RRGGBB> 태그 기능 제거됨
 
             // 자식 노드 순회
             node.childNodes.forEach(child => traverse(child, newStyles));
@@ -331,7 +307,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
     };
 
     if (root) {
-        root.childNodes.forEach(child => traverse(child, { b: false, i: false, u: false, color: '', highlight: '' }));
+        root.childNodes.forEach(child => traverse(child, { b: false, i: false, u: false, color: '' }));
     }
 
     return nodes;

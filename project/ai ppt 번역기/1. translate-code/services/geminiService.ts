@@ -35,13 +35,11 @@ Translate an array of Korean text fragments into professional English while STRI
 1. **One-to-One Mapping**: The input array has ${batch.length} items. The output MUST have exactly ${batch.length} items.
 2. **Order Preservation**: Do NOT reorder, merge, or split items.
 3. **Tag Preservation - CRITICAL**: 
-    - Preserve ALL tags EXACTLY as they appear: <b>, </b>, <i>, </i>, <u>, </u>, <br>, <color:XXXXXX>, </color>, <highlight:XXXXXX>, </highlight>
+    - Preserve ALL tags EXACTLY as they appear: <b>, </b>, <i>, </i>, <u>, </u>, <br>, <color:XXXXXX>, </color>
     - The <color:XXXXXX> tag contains a hex color code (e.g., <color:0000FF> for blue). Keep the exact color code.
-    - The <highlight:XXXXXX> tag is for background/highlight color (e.g., <highlight:FFFF00> for yellow). Keep the exact code.
-    - **CRITICAL SCOPING**: Color and Highlight tags must wrap **ONLY** the corresponding words. Do not extend the tag to the entire sentence if the original was specific.
+    - **CRITICAL SCOPING**: Color tags must wrap **ONLY** the corresponding words. Do not extend the tag to the entire sentence if the original was specific.
     - **TAG REORDERING**: If the word order changes during translation, you **MUST** move the tag to wrap the translated word in its *new* position. Do not leave the tag at the original position (e.g. at the start of the sentence) if the word moved.
-    - **Example**: '<highlight:FFFF00>사과</highlight>를 좋아해' -> 'I like <highlight:FFFF00>apples</highlight>' (Tag moved to end).
-    - **Example**: '<highlight:FFFF00>Apple</highlight> is red.' (Assume 'Apply' is tagged) -> '<highlight:FFFF00>사과</highlight>는 빨갛다'.
+    - **Example**: '<color:0000FF>사과</color>를 좋아해' -> 'I like <color:0000FF>apples</color>' (Tag moved to end).
     - Close tags immediately after the relevant text (e.g., <color:Red>Word</color> next word).
     - If the original text has NO tags, the translation MUST have NO tags.
     - If the original has <b>only part</b> bolded, keep ONLY that part bolded.
