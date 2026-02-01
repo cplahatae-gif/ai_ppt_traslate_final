@@ -24,4 +24,11 @@ dist-ssr
 *.sw?
 .vercel
 
-.vercel
+# Custom Logs/Temp/Env
+dev.log
+build_error.log
+build.log
+*.txt
+.env
+.env.local
+! .env.example

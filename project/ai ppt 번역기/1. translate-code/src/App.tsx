@@ -1,0 +1,397 @@
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { extractTextFromPptx, replaceTextInPptx, TextItem, countSlides } from './services/pptxService';
+import { translateTexts } from './services/geminiService';
+import { MainLayout } from './components/layout/MainLayout';
+import { StepIndicator } from './components/common/StepIndicator';
+import { FileUploadArea } from './components/upload/FileUploadArea';
+import { FilePreviewCard } from './components/preview/FilePreviewCard';
+import { TranslationOptions } from './components/config/TranslationOptions';
+import { StatusDisplay } from './components/StatusDisplay'; // 기존 컴포넌트 재사용 (스타일링 필요할 수도 있음)
+import { DownloadIcon } from './components/icons';
+import { useAuth } from './hooks/useAuth';
+import { AuthOverlay } from './components/auth/AuthOverlay';
+import { LimitStatus } from './types';
+
+import { tokenManager } from './services/TokenManager';
+import { jobService } from './services/JobService';
+import { qualityService } from './services/QualityService';
+import { QualityReport } from './components/QualityReport';
+import { QualityResult } from './types';
+import { AdminDashboard } from './components/admin/AdminDashboard';
+import { emailService } from './services/email/EmailService';
+
+type Status = 'idle' | 'analyzing' | 'translating' | 'building' | 'verifying' | 'done' | 'error';
+
+const App: React.FC = () => {
+  const { user, loading, checkUser, updateApiKey: saveApiKeyToDb } = useAuth();
+  const [file, setFile] = useState<File | null>(null);
+  const [promptInstruction, setPromptInstruction] = useState('');
+  const [glossary, setGlossary] = useState('');
+  const [apiKey, setApiKey] = useState('');
+
+  const [status, setStatus] = useState<Status>('idle');
+  const [progressMessage, setProgressMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  const [totalSlides, setTotalSlides] = useState(0);
+  const [startPage, setStartPage] = useState(1);
+  const [endPage, setEndPage] = useState(1);
+  const [estimatedTokens, setEstimatedTokens] = useState(0);
+  const [extractedCount, setExtractedCount] = useState(0);
+
+  const [tokenLimit, setTokenLimit] = useState<LimitStatus | null>(null);
+  const [qualityResult, setQualityResult] = useState<QualityResult | null>(null);
+
+  const originalTextsRef = React.useRef<string[]>([]);
+  const translatedTextsRef = React.useRef<string[]>([]);
+  const textItemsRef = React.useRef<TextItem[]>([]);
+
+  // Load initial data
+  useEffect(() => {
+    if (user?.apiKey) {
+      setApiKey(user.apiKey);
+    } else {
+      const localKey = localStorage.getItem('gemini_api_key') || '';
+      if (localKey) setApiKey(localKey);
+    }
+    if (user) {
+      tokenManager.getLimitStatus(user.id).then(setTokenLimit);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const loadResources = async () => {
+      try {
+        const promptRes = await fetch('/guide.md');
+        if (promptRes.ok) setPromptInstruction(await promptRes.text());
+        const glossaryRes = await fetch('/glossary.txt');
+        if (glossaryRes.ok) setGlossary(await glossaryRes.text());
+      } catch (err) {
+        console.warn('Failed to load default resources:', err);
+      }
+    };
+    loadResources();
+  }, []);
+
+  // Helper: Determine Current Step
+  const currentStep = useMemo(() => {
+    if (status === 'translating' || status === 'building' || status === 'verifying' || status === 'done') return 3;
+    if (file) return 2;
+    return 1;
+  }, [status, file]);
+
+  const handleApiKeyChange = useCallback(async (newKey: string) => {
+    setApiKey(newKey);
+    localStorage.setItem('gemini_api_key', newKey);
+    if (user) await saveApiKeyToDb(newKey);
+  }, [user, saveApiKeyToDb]);
+
+  const resetState = () => {
+    setFile(null);
+    setPromptInstruction('');
+    setGlossary('');
+    setStatus('idle');
+    setProgressMessage('');
+    setError(null);
+    setTotalSlides(0);
+    setStartPage(1);
+    setEndPage(1);
+    setEstimatedTokens(0);
+    setExtractedCount(0);
+    setQualityResult(null);
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    setDownloadUrl(null);
+  };
+
+  const handleFileSelect = async (selectedFile: File) => {
+    if (selectedFile.type !== 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
+      setError('올바른 PPTX 파일을 선택해주세요.');
+      return;
+    }
+
+    setStatus('analyzing');
+    setProgressMessage('파일 구조 분석 중...');
+    setError(null);
+    setQualityResult(null);
+    setDownloadUrl(null);
+
+    try {
+      setFile(selectedFile);
+      const count = await countSlides(selectedFile);
+      setTotalSlides(count);
+      setEndPage(count);
+      setStartPage(1);
+      setStatus('idle'); // 분석 완료 후 Config 단계로 전환
+    } catch (e) {
+      setError('파일을 분석하는 데 실패했습니다. 손상된 파일일 수 있습니다.');
+      setStatus('error');
+    }
+  };
+
+  const handleTranslate = useCallback(async () => {
+    if (!file || !user) return;
+
+    let jobId: string | null = null;
+    try {
+      const currentStatus = await tokenManager.getLimitStatus(user.id);
+      setTokenLimit(currentStatus);
+      if (!currentStatus.canProceed) throw new Error('일일 토큰 사용 한도에 도달했습니다.');
+
+      jobId = await jobService.createJob(user.id, file.name);
+
+      // Step 3 진입
+      setStatus('analyzing');
+      setProgressMessage(`${startPage}~${endPage}페이지 텍스트 추출 중...`);
+
+      const textItems = await extractTextFromPptx(file, startPage, endPage);
+      const originalTexts = textItems.map(item => item.text);
+      const tokens = tokenManager.estimateTokens(originalTexts);
+      setEstimatedTokens(tokens);
+      setExtractedCount(originalTexts.length);
+
+      if (originalTexts.length === 0) {
+        setError('선택한 범위에서 번역할 텍스트를 찾을 수 없습니다.');
+        setStatus('error');
+        if (jobId) await jobService.updateJob(jobId, 'failed');
+        return;
+      }
+
+      if (jobId) await jobService.updateJob(jobId, 'translating', tokens);
+      setStatus('translating');
+      setProgressMessage(`AI 번역 시작... (예상 토큰: ${tokens.toLocaleString()})`);
+
+      const onProgress = (completed: number, total: number) => {
+        const percent = Math.round((completed / total) * 100);
+        setProgressMessage(`번역 진행 중... ${percent}% 완료`);
+      };
+
+      const translatedTexts = await translateTexts(originalTexts, onProgress, promptInstruction, glossary, 20, apiKey);
+
+      const translatedItems: TextItem[] = textItems.map((item, index) => ({
+        ...item,
+        text: translatedTexts[index],
+        originalLength: originalTexts[index].replace(/<[^>]*>/g, '').length
+      }));
+
+      originalTextsRef.current = originalTexts;
+      translatedTextsRef.current = translatedTexts;
+      textItemsRef.current = textItems;
+
+      setStatus('building');
+      setProgressMessage('PPTX 파일 생성 중...');
+      const translatedBlob = await replaceTextInPptx(file, translatedItems);
+
+      await tokenManager.logUsage(user.id, tokens);
+      const updatedStatus = await tokenManager.getLimitStatus(user.id);
+      setTokenLimit(updatedStatus);
+
+      if (jobId) await jobService.updateJob(jobId, 'completed', tokens);
+
+      // Quality Check
+      setStatus('verifying');
+      setProgressMessage('AI 품질 분석 진행 중...');
+
+      const notifyEnabled = localStorage.getItem(`email_notify_${user.email}`) === 'true';
+      if (notifyEnabled) {
+        emailService.sendTranslationComplete(user.email, user.name, file.name, tokens).catch(console.error);
+      }
+
+      const [qResponse] = await Promise.all([
+        qualityService.verify(jobId!, originalTexts, translatedTexts, apiKey),
+        new Promise(resolve => setTimeout(resolve, 1500))
+      ]);
+
+      if (qResponse) {
+        setQualityResult(qResponse.result);
+        await tokenManager.logUsage(user.id, qResponse.tokens);
+        setTokenLimit(await tokenManager.getLimitStatus(user.id));
+      }
+
+      const url = URL.createObjectURL(translatedBlob);
+      setDownloadUrl(url);
+      setStatus('done');
+      setProgressMessage(`${startPage}~${endPage}페이지 번역 완료!`);
+
+    } catch (err) {
+      console.error(err);
+      const errorMsg = err instanceof Error ? err.message : '알 수 없는 오류';
+      setError(`오류: ${errorMsg}`);
+      setStatus('error');
+      if (jobId) await jobService.updateJob(jobId, 'failed');
+
+      const notifyEnabled = localStorage.getItem(`email_notify_${user.email}`) === 'true';
+      if (notifyEnabled) {
+        emailService.sendTranslationFailed(user.email, user.name, file.name, errorMsg).catch(console.error);
+      }
+    }
+  }, [file, user, promptInstruction, glossary, startPage, endPage, apiKey]);
+
+  const handleApplyFixes = async (selectedIndices: number[]) => {
+    if (!file || !qualityResult || selectedIndices.length === 0) return;
+    try {
+      setStatus('building');
+      setProgressMessage('수정사항 적용 중...');
+
+      const newTranslatedTexts = [...translatedTextsRef.current];
+      selectedIndices.forEach(idx => {
+        const issue = qualityResult.issues.find(i => i.index === idx);
+        if (issue && issue.suggestion) newTranslatedTexts[idx] = issue.suggestion;
+      });
+
+      const updatedItems: TextItem[] = textItemsRef.current.map((item, index) => ({
+        ...item,
+        text: newTranslatedTexts[index],
+        originalLength: originalTextsRef.current[index].replace(/<[^>]*>/g, '').length
+      }));
+
+      const newBlob = await replaceTextInPptx(file, updatedItems);
+      const newUrl = URL.createObjectURL(newBlob);
+
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+      setDownloadUrl(newUrl);
+      translatedTextsRef.current = newTranslatedTexts;
+      setStatus('done');
+
+      // 자동 다운로드
+      const link = document.createElement('a');
+      link.href = newUrl;
+      link.download = getOutputFilename();
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error(err);
+      setError('수정 중 오류 발생');
+      setStatus('error');
+    }
+  };
+
+  const getOutputFilename = () => {
+    if (!file) return 'translated.pptx';
+    const name = file.name.replace(/\.pptx$/, '');
+    return `${name}_p${startPage}-${endPage}_en.pptx`;
+  };
+
+  if (loading) return <div className="min-h-screen bg-background-dark flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
+  if (!user) return <AuthOverlay onSuccess={checkUser} />;
+
+  // Admin Dashboard (권한 없을 경우 대기 화면)
+  if (!user.isApproved && !user.isAdmin) {
+    return (
+      <div className="min-h-screen bg-background-dark flex items-center justify-center p-4">
+        <div className="w-full max-w-md p-8 bg-surface-dark rounded-2xl border border-border-dark text-center">
+          <h2 className="text-2xl font-bold text-white mb-2">승인 대기 중</h2>
+          <button onClick={checkUser} className="px-6 py-2 bg-primary rounded-lg text-white">새로고침</button>
+        </div>
+      </div>
+    )
+  }
+  if (user.isAdmin) return <AdminDashboard currentUser={user} onLogout={() => window.location.reload()} />;
+
+  return (
+    <MainLayout user={user} onLogout={() => window.location.reload()} onLogin={() => window.location.reload()}>
+      <StepIndicator currentStep={currentStep} />
+
+      {/* Step 1: Upload */}
+      {currentStep === 1 && (
+        <div className="animate-fade-in">
+          <FileUploadArea onFileSelect={handleFileSelect} />
+          {error && <div className="mt-4 p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-500 text-center">{error}</div>}
+        </div>
+      )}
+
+      {/* Step 2: Config */}
+      {currentStep === 2 && file && (
+        <div className="flex flex-col lg:flex-row gap-8 grow animate-fade-in">
+          <FilePreviewCard file={file} slideCount={totalSlides > 0 ? totalSlides : null} />
+          <TranslationOptions
+            prompt={promptInstruction}
+            onPromptChange={setPromptInstruction}
+            startPage={startPage} setStartPage={setStartPage}
+            endPage={endPage} setEndPage={setEndPage}
+            totalSlides={totalSlides}
+            onTranslate={handleTranslate}
+            isAnalyzing={status === 'analyzing'}
+            userEmail={user.email}
+            userName={user.name}
+            glossary={glossary}
+            onGlossaryChange={setGlossary}
+            apiKey={apiKey}
+            onApiKeyChange={handleApiKeyChange}
+          />
+        </div>
+      )}
+
+      {/* Step 3: Processing & Results */}
+      {currentStep === 3 && (
+        <div className="w-full max-w-3xl mx-auto space-y-8 animate-fade-in">
+          {/* Status Display Area */}
+          {status !== 'done' && (
+            <div className="bg-white dark:bg-surface-dark p-8 rounded-xl border border-border-light dark:border-border-dark shadow-lg text-center">
+              <div className="mb-6 flex justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+              </div>
+              <h3 className="text-xl font-bold mb-2">{status === 'translating' ? 'AI 번역 진행 중' : '작업 처리 중'}</h3>
+              <p className="text-slate-500">{progressMessage}</p>
+              {/* Token Limit Info */}
+              {tokenLimit && (
+                <div className="mt-4 text-xs text-slate-400">
+                  일일 토큰 사용량: {tokenLimit.dailyUsed.toLocaleString()} / {tokenLimit.dailyLimit.toLocaleString()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {status === 'done' && downloadUrl && (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-surface-dark border-2 border-green-500/50 rounded-2xl p-8 text-center shadow-2xl animate-scale-in">
+                <div className="h-20 w-20 bg-green-500/20 rounded-full flex items-center justify-center text-green-500 mx-auto mb-6">
+                  <DownloadIcon />
+                </div>
+                <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white">번역이 완료되었습니다!</h2>
+                <p className="text-slate-500 mb-8">성공적으로 번역된 파일을 아래 버튼을 눌러 다운로드하세요.</p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <a
+                    href={downloadUrl}
+                    download={getOutputFilename()}
+                    className="px-8 py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-green-500/20 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined">download</span>
+                    다운로드
+                  </a>
+                  <button
+                    onClick={resetState}
+                    className="px-8 py-4 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white font-bold rounded-xl transition-all active:scale-95"
+                  >
+                    처음으로
+                  </button>
+                </div>
+              </div>
+
+              {/* Quality Report */}
+              {qualityResult && (
+                <QualityReport
+                  result={qualityResult}
+                  onApplyFixes={handleApplyFixes}
+                  onDownloadOriginal={() => { }}
+                />
+              )}
+            </div>
+          )}
+
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-500 text-center">
+              {error}
+              <div className="mt-4">
+                <button onClick={resetState} className="text-sm underline">처음으로 돌아가기</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </MainLayout>
+  );
+};
+
+export default App;
