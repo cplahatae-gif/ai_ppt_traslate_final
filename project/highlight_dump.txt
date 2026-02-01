@@ -1,10 +1,70 @@
 
-[Found Highlight in ppt/slides/slide1.xml] Text: '종사자'
+[Found Highlight in ppt/slides/slide1.xml] Text: 'workers'
 <a:highlight>
 	<a:srgbClr val="FFFF00"/>
 </a:highlight>
 
-[Found Highlight in ppt/slides/slide1.xml] Text: '의 생명과 신체를 보호함을 '
+[Found Highlight in ppt/slides/slide1.xml] Text: ' by prescribing the '
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: 'punishment'
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: ', etc., of '
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: 'business owners, responsible managing officers'
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: ', '
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: 'public officials, and corporations'
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: ' who cause casualties by violating '
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: 'duties to take safety and health measures'
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: ' while '
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: 'operating'
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: ' '
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: 'businesses or plants'
+<a:highlight>
+	<a:srgbClr val="FFFF00"/>
+</a:highlight>
+
+[Found Highlight in ppt/slides/slide1.xml] Text: ', public-use facilities, and public transportation vehicles, or handling raw materials or products harmful to the human body.'
 <a:highlight>
 	<a:srgbClr val="FFFF00"/>
 </a:highlight>

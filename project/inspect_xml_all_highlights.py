@@ -28,4 +28,4 @@ def inspect_all_highlights(pptx_path):
 if __name__ == "__main__":
     base_path = r"c:/Users/nomus/Desktop/구글 동기화/안티그래비티/테스트/project/ai ppt 번역기/2. ppt/"
     # Check Original File
-    inspect_all_highlights(os.path.join(base_path, "test_file.pptx"))
+    inspect_all_highlights(os.path.join(base_path, "test_file_p1-2_en (6).pptx"))
