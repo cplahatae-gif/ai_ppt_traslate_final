@@ -15,8 +15,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children, user, onLogout
             <div className="relative z-10 flex flex-col min-h-screen">
                 <Header user={user} onLogout={onLogout} onLogin={onLogin} />
 
-                <main className="flex-1 flex flex-col w-full max-w-[1440px] mx-auto px-6 py-8">
-                    <div className="flex-1 border-2 border-border-strong rounded-xl p-8 shadow-float bg-white">
+                <main className="flex-1 flex flex-col w-full max-w-[1100px] mx-auto px-4 py-6">
+                    <div className="flex-1 border-2 border-border-strong rounded-lg p-6 shadow-card bg-white">
                         {children}
                     </div>
                 </main>
