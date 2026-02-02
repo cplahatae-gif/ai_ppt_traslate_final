@@ -130,3 +130,124 @@ export const translateTexts = async (
 
     return allTranslatedTexts;
 };
+
+/**
+ * API 키 형식 유효성 검사
+ */
+export const validateApiKeyFormat = (apiKey: string): { valid: boolean; message: string } => {
+    if (!apiKey || apiKey.trim() === '') {
+        return { valid: false, message: 'API 키가 비어있습니다.' };
+    }
+
+    // Gemini API 키는 일반적으로 'AIza'로 시작하고 39자
+    const trimmedKey = apiKey.trim();
+
+    if (trimmedKey.length < 30) {
+        return { valid: false, message: 'API 키가 너무 짧습니다.' };
+    }
+
+    if (!trimmedKey.startsWith('AIza')) {
+        return { valid: false, message: 'Gemini API 키는 "AIza"로 시작해야 합니다.' };
+    }
+
+    return { valid: true, message: '형식이 올바릅니다.' };
+};
+
+/**
+ * API 키 연결 테스트 - 실제 API 호출을 통해 검증
+ */
+export const testApiKey = async (apiKey: string): Promise<{
+    valid: boolean;
+    message: string;
+    latency?: number;
+}> => {
+    const formatCheck = validateApiKeyFormat(apiKey);
+    if (!formatCheck.valid) {
+        return formatCheck;
+    }
+
+    try {
+        const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+        const startTime = Date.now();
+
+        // 간단한 테스트 요청
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: 'Say "API key is valid" in one word: Valid',
+            config: {
+                maxOutputTokens: 10,
+            },
+        });
+
+        const latency = Date.now() - startTime;
+
+        if (response.text) {
+            return {
+                valid: true,
+                message: '✓ API 키가 유효합니다.',
+                latency
+            };
+        }
+
+        return { valid: false, message: '응답이 비어있습니다.' };
+    } catch (error: any) {
+        const errorMessage = error?.message || String(error);
+
+        if (errorMessage.includes('API_KEY_INVALID')) {
+            return { valid: false, message: '유효하지 않은 API 키입니다.' };
+        }
+        if (errorMessage.includes('PERMISSION_DENIED')) {
+            return { valid: false, message: 'API 키 권한이 부족합니다.' };
+        }
+        if (errorMessage.includes('QUOTA_EXCEEDED')) {
+            return { valid: false, message: 'API 할당량이 초과되었습니다.' };
+        }
+
+        return { valid: false, message: `검증 실패: ${errorMessage}` };
+    }
+};
+
+/**
+ * 현재 사용 가능한 API 키 가져오기 (우선순위: 사용자 입력 > 환경변수)
+ */
+export const getAvailableApiKey = (userApiKey?: string): string | null => {
+    if (userApiKey && userApiKey.trim()) {
+        return userApiKey.trim();
+    }
+
+    const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (envKey && envKey.trim()) {
+        return envKey.trim();
+    }
+
+    return null;
+};
+
+/**
+ * API 키 상태 확인
+ */
+export const getApiKeyStatus = (userApiKey?: string): {
+    hasKey: boolean;
+    source: 'user' | 'env' | 'none';
+    keyPreview?: string;
+} => {
+    if (userApiKey && userApiKey.trim()) {
+        const key = userApiKey.trim();
+        return {
+            hasKey: true,
+            source: 'user',
+            keyPreview: `${key.substring(0, 6)}...${key.substring(key.length - 4)}`
+        };
+    }
+
+    const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (envKey && envKey.trim()) {
+        return {
+            hasKey: true,
+            source: 'env',
+            keyPreview: '환경변수 (숨김)'
+        };
+    }
+
+    return { hasKey: false, source: 'none' };
+};
