@@ -42,16 +42,14 @@ export const EmailSettings: React.FC<EmailSettingsProps> = ({ userEmail, userNam
     };
 
     return (
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mt-6">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span>📧</span> 이메일 알림 설정
-            </h3>
-
-            <div className="flex items-center justify-between mb-4">
-                <div>
-                    <p className="text-gray-300 font-medium">번역 완료 알림 받기</p>
-                    <p className="text-sm text-gray-500">
-                        번역이 완료되거나 실패했을 때 가입된 이메일({userEmail})로 알림을 보냅니다.
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <div className="flex-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1 mb-1">
+                        <span className="material-symbols-outlined text-xs">mail</span> 이메일 알림
+                    </label>
+                    <p className="text-[10px] text-gray-400">
+                        번역 완료/실패 시 {userEmail}로 알림
                     </p>
                 </div>
 
@@ -62,24 +60,25 @@ export const EmailSettings: React.FC<EmailSettingsProps> = ({ userEmail, userNam
                         checked={enabled}
                         onChange={(e) => handleToggle(e.target.checked)}
                     />
-                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                 </label>
             </div>
 
             {enabled && (
-                <div className="mt-4 p-4 bg-gray-900/50 rounded border border-gray-700 flex justify-between items-center">
-                    <span className="text-sm text-gray-400">
-                        * 현재 EmailJS 설정이 되어있지 않다면 실제 메일은 가지 않고 콘솔에만 기록됩니다.
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200 flex justify-between items-center">
+                    <span className="text-[9px] text-gray-400">
+                        * EmailJS 미설정 시 콘솔에만 기록됩니다.
                     </span>
                     <button
                         onClick={handleTestSend}
                         disabled={loading}
-                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-xs text-white rounded transition-colors"
+                        className="px-2 py-1 bg-white hover:bg-gray-100 text-[10px] text-gray-600 font-bold rounded border border-gray-200 transition-colors disabled:opacity-50"
                     >
-                        {loading ? '발송 중...' : '테스트 발송'}
+                        {loading ? '발송 중...' : '테스트'}
                     </button>
                 </div>
             )}
         </div>
     );
 };
+
