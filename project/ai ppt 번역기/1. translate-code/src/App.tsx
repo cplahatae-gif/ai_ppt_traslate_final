@@ -6,7 +6,7 @@ import { StepIndicator } from './components/common/StepIndicator';
 import { FileUploadArea } from './components/upload/FileUploadArea';
 import { FilePreviewCard } from './components/preview/FilePreviewCard';
 import { TranslationOptions } from './components/config/TranslationOptions';
-import { StatusDisplay } from './components/StatusDisplay'; // 기존 컴포넌트 재사용 (스타일링 필요할 수도 있음)
+import { StatusDisplay } from './components/StatusDisplay';
 import { DownloadIcon } from './components/icons';
 import { useAuth } from './hooks/useAuth';
 import { AuthOverlay } from './components/auth/AuthOverlay';
@@ -19,6 +19,7 @@ import { QualityReport } from './components/QualityReport';
 import { QualityResult } from './types';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { emailService } from './services/email/EmailService';
+import { authService } from './services/auth/AuthService';
 
 type Status = 'idle' | 'analyzing' | 'translating' | 'building' | 'verifying' | 'done' | 'error';
 
@@ -277,20 +278,34 @@ const App: React.FC = () => {
   if (!user) return <AuthOverlay onSuccess={checkUser} />;
 
   // Admin Dashboard (권한 없을 경우 대기 화면)
+  // 로그아웃 핸들러
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+    window.location.reload();
+  };
+
   if (!user.isApproved && !user.isAdmin) {
     return (
-      <div className="min-h-screen bg-background-dark flex items-center justify-center p-4">
-        <div className="w-full max-w-md p-8 bg-surface-dark rounded-2xl border border-border-dark text-center">
-          <h2 className="text-2xl font-bold text-white mb-2">승인 대기 중</h2>
-          <button onClick={checkUser} className="px-6 py-2 bg-primary rounded-lg text-white">새로고침</button>
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="w-full max-w-md p-8 bg-white rounded-xl border-2 border-black text-center shadow-float">
+          <h2 className="text-2xl font-black text-black mb-4">승인 대기 중</h2>
+          <p className="text-gray-600 mb-6">관리자가 계정을 승인할 때까지 잠시 기다려주세요.</p>
+          <div className="flex gap-3 justify-center">
+            <button onClick={checkUser} className="px-6 py-2 bg-primary hover:bg-primary-hover rounded-lg text-white font-bold transition-colors">새로고침</button>
+            <button onClick={handleLogout} className="px-6 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-black font-bold transition-colors">로그아웃</button>
+          </div>
         </div>
       </div>
     )
   }
-  if (user.isAdmin) return <AdminDashboard currentUser={user} onLogout={() => window.location.reload()} />;
+  if (user.isAdmin) return <AdminDashboard currentUser={user} onLogout={handleLogout} />;
 
   return (
-    <MainLayout user={user} onLogout={() => window.location.reload()} onLogin={() => window.location.reload()}>
+    <MainLayout user={user} onLogout={handleLogout} onLogin={() => window.location.reload()}>
       <StepIndicator currentStep={currentStep} />
 
       {/* Step 1: Upload */}

@@ -40,36 +40,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onL
         try {
             if (!confirm('이 사용자를 승인하시겠습니까?')) return;
             await adminService.approveUser(userId);
-            setRefreshKey(prev => prev + 1); // 리프레시
+            setRefreshKey(prev => prev + 1);
         } catch (err) {
             alert('승인 처리에 실패했습니다.');
         }
     };
 
+    const handleLogout = async () => {
+        try {
+            await authService.logout();
+            onLogout();
+        } catch (err) {
+            console.error('Logout failed:', err);
+            onLogout(); // 에러가 나도 일단 로그아웃 처리
+        }
+    };
+
     if (!currentUser.isAdmin) {
         return (
-            <div className="min-h-screen bg-gray-900 flex items-center justify-center text-red-500">
+            <div className="min-h-screen bg-white flex items-center justify-center text-red-600 font-bold">
                 접근 권한이 없습니다.
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 font-sans p-8">
+        <div className="min-h-screen bg-white text-black font-display p-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <header className="flex justify-between items-center mb-12 border-b border-gray-800 pb-6">
+                <header className="flex justify-between items-center mb-12 border-b-2 border-black pb-6">
                     <div>
-                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-                            Admin Dashboard
+                        <h1 className="text-3xl font-black text-black">
+                            관리자 대시보드
                         </h1>
-                        <p className="text-gray-500 mt-2">시스템 현황 및 사용자 관리</p>
+                        <p className="text-gray-600 mt-2 font-medium">시스템 현황 및 사용자 관리</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="text-gray-400">{currentUser.name} (관리자)</span>
+                        <span className="text-gray-700 font-bold">{currentUser.name} (관리자)</span>
                         <button
-                            onClick={onLogout}
-                            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+                            onClick={handleLogout}
+                            className="px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg text-sm font-bold transition-colors"
                         >
                             로그아웃
                         </button>
@@ -78,8 +88,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onL
 
                 {loading && !stats ? (
                     <div className="text-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="text-gray-400">데이터 로딩 중...</p>
+                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4"></div>
+                        <p className="text-gray-600 font-medium">데이터 로딩 중...</p>
                     </div>
                 ) : (
                     <>
@@ -88,36 +98,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onL
                             <StatCard
                                 title="총 사용자"
                                 value={stats?.totalUsers || 0}
-                                icon="👥"
-                                color="blue"
+                                icon="group"
+                                color="primary"
                             />
                             <StatCard
                                 title="승인 대기"
                                 value={stats?.pendingUsers || 0}
-                                icon="⏳"
+                                icon="hourglass_empty"
                                 color="yellow"
                             />
                             <StatCard
                                 title="오늘의 토큰 사용량"
                                 value={stats?.todayTokens.toLocaleString() || 0}
-                                icon="💎"
-                                color="purple"
+                                icon="token"
+                                color="green"
                             />
                             <StatCard
                                 title="오류 발생"
                                 value={stats?.totalErrors || 0}
-                                icon="⚠️"
+                                icon="warning"
                                 color="red"
                             />
                         </div>
 
                         {/* User Management */}
-                        <div className="bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-700">
-                            <div className="p-6 border-b border-gray-700 flex justify-between items-center">
-                                <h2 className="text-xl font-bold">사용자 목록</h2>
+                        <div className="bg-white rounded-xl shadow-float overflow-hidden border-2 border-black">
+                            <div className="p-6 border-b-2 border-gray-200 flex justify-between items-center">
+                                <h2 className="text-xl font-black">사용자 목록</h2>
                                 <button
                                     onClick={() => setRefreshKey(p => p + 1)}
-                                    className="text-sm text-blue-400 hover:text-blue-300"
+                                    className="text-sm text-primary hover:text-primary-hover font-bold"
                                 >
                                     새로고침
                                 </button>
@@ -125,7 +135,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onL
 
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left">
-                                    <thead className="bg-gray-700/50 text-gray-400 text-sm uppercase">
+                                    <thead className="bg-gray-100 text-gray-700 text-sm uppercase font-bold">
                                         <tr>
                                             <th className="px-6 py-4">사용자 정보</th>
                                             <th className="px-6 py-4">가입일</th>
@@ -134,31 +144,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onL
                                             <th className="px-6 py-4">관리</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-700">
+                                    <tbody className="divide-y divide-gray-200">
                                         {users.map((user) => (
-                                            <tr key={user.id} className="hover:bg-gray-750 transition-colors">
+                                            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-6 py-4">
-                                                    <div className="font-medium text-white">{user.name}</div>
+                                                    <div className="font-bold text-black">{user.name}</div>
                                                     <div className="text-sm text-gray-500">{user.email}</div>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm text-gray-400">
+                                                <td className="px-6 py-4 text-sm text-gray-600">
                                                     {user.createdAt.toLocaleDateString()}
                                                 </td>
-                                                <td className="px-6 py-4 text-sm text-gray-400">
+                                                <td className="px-6 py-4 text-sm text-gray-600">
                                                     {user.lastLoginAt.toLocaleString()}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {user.isApproved ? (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900/50 text-green-400 border border-green-700">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-300">
                                                             승인됨
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-900/50 text-yellow-400 border border-yellow-700">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-300">
                                                             대기 중
                                                         </span>
                                                     )}
                                                     {user.isAdmin && (
-                                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900/50 text-purple-400 border border-purple-700">
+                                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/30">
                                                             관리자
                                                         </span>
                                                     )}
@@ -167,7 +177,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onL
                                                     {!user.isApproved && (
                                                         <button
                                                             onClick={() => handleApprove(user.id)}
-                                                            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded shadow transition-colors"
+                                                            className="px-3 py-1 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded shadow transition-colors"
                                                         >
                                                             승인하기
                                                         </button>
@@ -187,22 +197,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onL
 };
 
 const StatCard: React.FC<{ title: string; value: number | string; icon: string; color: string }> = ({ title, value, icon, color }) => {
-    const colorClasses = {
-        blue: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-        yellow: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-        purple: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-        red: 'bg-red-500/10 text-red-500 border-red-500/20',
-    }[color];
+    const colorClasses: Record<string, string> = {
+        primary: 'bg-primary/10 text-primary border-primary/30',
+        yellow: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+        green: 'bg-green-100 text-green-700 border-green-300',
+        red: 'bg-red-100 text-red-700 border-red-300',
+    };
+
+    const classes = colorClasses[color] || colorClasses.primary;
 
     return (
-        <div className={`p-6 rounded-2xl border ${colorClasses.split(' ')[2]} bg-gray-800 shadow-lg`}>
+        <div className={`p-6 rounded-xl border-2 border-black bg-white shadow-card`}>
             <div className="flex items-center justify-between mb-4">
-                <span className="text-gray-400 text-sm font-medium">{title}</span>
-                <span className={`text-2xl p-2 rounded-lg ${colorClasses.split(' ')[0]} ${colorClasses.split(' ')[1]}`}>
+                <span className="text-gray-600 text-sm font-bold uppercase">{title}</span>
+                <span className={`material-symbols-outlined text-2xl p-2 rounded-lg ${classes}`}>
                     {icon}
                 </span>
             </div>
-            <div className="text-3xl font-bold text-gray-100">{value}</div>
+            <div className="text-4xl font-black text-black">{value}</div>
         </div>
     );
 };
