@@ -6,9 +6,10 @@ import { User } from '../../types';
 interface AdminDashboardProps {
     currentUser: User;
     onLogout: () => void;
+    onBack?: () => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onLogout }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onLogout, onBack }) => {
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
@@ -67,13 +68,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onL
     return (
         <div className="min-h-screen bg-white text-black font-display p-8">
             <div className="max-w-7xl mx-auto">
-                {/* Header */}
                 <header className="flex justify-between items-center mb-12 border-b-2 border-black pb-6">
-                    <div>
-                        <h1 className="text-3xl font-black text-black">
-                            관리자 대시보드
-                        </h1>
-                        <p className="text-gray-600 mt-2 font-medium">시스템 현황 및 사용자 관리</p>
+                    <div className="flex items-center gap-4">
+                        {onBack && (
+                            <button
+                                onClick={onBack}
+                                className="flex items-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-lg text-sm font-bold transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-lg">arrow_back</span>
+                                돌아가기
+                            </button>
+                        )}
+                        <div>
+                            <h1 className="text-3xl font-black text-black">
+                                관리자 대시보드
+                            </h1>
+                            <p className="text-gray-600 mt-1 font-medium">시스템 현황 및 사용자 관리</p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                         <span className="text-gray-700 font-bold">{currentUser.name} (관리자)</span>

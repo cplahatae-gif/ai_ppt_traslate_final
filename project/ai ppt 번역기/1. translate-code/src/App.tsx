@@ -43,6 +43,7 @@ const App: React.FC = () => {
 
   const [tokenLimit, setTokenLimit] = useState<LimitStatus | null>(null);
   const [qualityResult, setQualityResult] = useState<QualityResult | null>(null);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
 
   const originalTextsRef = React.useRef<string[]>([]);
   const translatedTextsRef = React.useRef<string[]>([]);
@@ -302,10 +303,26 @@ const App: React.FC = () => {
       </div>
     )
   }
-  if (user.isAdmin) return <AdminDashboard currentUser={user} onLogout={handleLogout} />;
+
+  // 관리자 대시보드 표시
+  if (showAdminDashboard && user.isAdmin) {
+    return <AdminDashboard currentUser={user} onLogout={handleLogout} onBack={() => setShowAdminDashboard(false)} />;
+  }
 
   return (
     <MainLayout user={user} onLogout={handleLogout} onLogin={() => window.location.reload()}>
+      {/* 관리자 버튼 */}
+      {user.isAdmin && (
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => setShowAdminDashboard(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg font-bold text-sm transition-colors shadow-md"
+          >
+            <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+            관리자 대시보드
+          </button>
+        </div>
+      )}
       <StepIndicator currentStep={currentStep} />
 
       {/* Step 1: Upload */}
