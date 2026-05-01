@@ -71,7 +71,7 @@ Translate an array of Korean text fragments into professional English while STRI
             const prompt = `Translate these ${batch.length} items to English:\n${JSON.stringify(batch)}`;
 
             const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.5-flash',
                 contents: prompt,
                 config: {
                     systemInstruction: systemInstruction,
