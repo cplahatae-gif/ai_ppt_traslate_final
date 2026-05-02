@@ -20,6 +20,7 @@ import { QualityResult } from './types';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { emailService } from './services/email/EmailService';
 import { authService } from './services/auth/AuthService';
+import { ProviderId, getProviderConfig, getApiKeyFromStorage, saveApiKeyToStorage } from './services/modelCatalog';
 
 type Status = 'idle' | 'analyzing' | 'translating' | 'building' | 'verifying' | 'done' | 'error';
 
@@ -28,7 +29,16 @@ const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [promptInstruction, setPromptInstruction] = useState('');
   const [glossary, setGlossary] = useState('');
-  const [apiKey, setApiKey] = useState('');
+
+  const [provider, setProvider] = useState<ProviderId>(() =>
+    (localStorage.getItem('ai_provider') as ProviderId) || 'gemini'
+  );
+  const [model, setModel] = useState<string>(() =>
+    localStorage.getItem('ai_model') || 'gemini-2.5-flash'
+  );
+  const [apiKey, setApiKey] = useState(() => getApiKeyFromStorage(
+    (localStorage.getItem('ai_provider') as ProviderId) || 'gemini'
+  ));
 
   const [status, setStatus] = useState<Status>('idle');
   const [progressMessage, setProgressMessage] = useState('');
@@ -83,11 +93,25 @@ const App: React.FC = () => {
     return 1;
   }, [status, file]);
 
+  const handleProviderChange = useCallback((newProvider: ProviderId) => {
+    const config = getProviderConfig(newProvider);
+    setProvider(newProvider);
+    setModel(config.defaultModel);
+    setApiKey(getApiKeyFromStorage(newProvider));
+    localStorage.setItem('ai_provider', newProvider);
+    localStorage.setItem('ai_model', config.defaultModel);
+  }, []);
+
+  const handleModelChange = useCallback((newModel: string) => {
+    setModel(newModel);
+    localStorage.setItem('ai_model', newModel);
+  }, []);
+
   const handleApiKeyChange = useCallback(async (newKey: string) => {
     setApiKey(newKey);
-    localStorage.setItem('gemini_api_key', newKey);
+    saveApiKeyToStorage(provider, newKey);
     if (user) await saveApiKeyToDb(newKey);
-  }, [user, saveApiKeyToDb]);
+  }, [user, saveApiKeyToDb, provider]);
 
   const resetState = () => {
     setFile(null);
@@ -168,7 +192,7 @@ const App: React.FC = () => {
         setProgressMessage(`번역 진행 중... ${percent}% 완료`);
       };
 
-      const translatedTexts = await translateTexts(originalTexts, onProgress, promptInstruction, glossary, 20, apiKey);
+      const translatedTexts = await translateTexts(originalTexts, onProgress, promptInstruction, glossary, 20, apiKey, provider, model);
 
       const translatedItems: TextItem[] = textItems.map((item, index) => ({
         ...item,
@@ -227,7 +251,7 @@ const App: React.FC = () => {
         emailService.sendTranslationFailed(user.email, user.name, file.name, errorMsg).catch(console.error);
       }
     }
-  }, [file, user, promptInstruction, glossary, startPage, endPage, apiKey]);
+  }, [file, user, promptInstruction, glossary, startPage, endPage, apiKey, provider, model]);
 
   const handleApplyFixes = async (selectedIndices: number[]) => {
     if (!file || !qualityResult || selectedIndices.length === 0) return;
@@ -351,6 +375,10 @@ const App: React.FC = () => {
             onGlossaryChange={setGlossary}
             apiKey={apiKey}
             onApiKeyChange={handleApiKeyChange}
+            provider={provider}
+            onProviderChange={handleProviderChange}
+            model={model}
+            onModelChange={handleModelChange}
           />
         </div>
       )}

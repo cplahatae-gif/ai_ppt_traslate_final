@@ -210,11 +210,8 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
                     rPr.setAttribute('sz', String(Math.max(newSize, 800)));
                 }
 
-                // TEXT SPACING CLEAR
-                const currentSpc = parseInt(rPr.getAttribute('spc') || '0');
-                if (currentSpc < 0) {
-                    rPr.setAttribute('spc', '0');
-                }
+                // 영문 번역 시 자간 설정이 좁으면 글자가 겹침 — 무조건 표준으로 리셋
+                rPr.removeAttribute('spc');
             } else {
                 rPr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:rPr");
             }
@@ -314,6 +311,25 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
 };
 
 /**
+ * P3 Fix: 영문 번역 시 줄간격을 한 단계 낮춤 (1.5→1.2, 1.2→1.0)
+ * 한국어 넓은 줄간격이 영문 번역 후 텍스트 박스 초과를 유발
+ */
+const adjustLineSpacing = (pNode: Element): void => {
+    const pPr = pNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'pPr')[0];
+    if (!pPr) return;
+    const lnSpc = pPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'lnSpc')[0];
+    if (!lnSpc) return;
+    const spcPct = lnSpc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spcPct')[0];
+    if (!spcPct) return;
+    const val = parseInt(spcPct.getAttribute('val') || '0');
+    if (val >= 150000) {
+        spcPct.setAttribute('val', '120000'); // 1.5 → 1.2
+    } else if (val >= 120000) {
+        spcPct.setAttribute('val', '100000'); // 1.2 → 1.0
+    }
+};
+
+/**
  * 번역된 텍스트를 원본 파일에 덮어씁니다.
  */
 export const replaceTextInPptx = async (originalFile: File, translatedItems: TextItem[]): Promise<Blob> => {
@@ -339,6 +355,8 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
             const pNode = paragraphNodes[item.paragraphIndex];
 
             if (!pNode) continue;
+
+            adjustLineSpacing(pNode); // P3 Fix: 줄간격 한 단계 다운
 
             // 텍스트 상자 자동 맞춤 로직 (기존 유지)
             let parent = pNode.parentElement;
@@ -388,6 +406,15 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
 
             // 스타일 클론
             const defaultProps = representativeRPr ? representativeRPr.cloneNode(true) as Element : undefined;
+
+            // P1 Fix: 색상 전염 방지 — cloneNode 후 모든 fill 노드 제거
+            // 색상은 createRunsFromTaggedText에서 <color:> 태그 있을 때만 개별 run에 부여
+            if (defaultProps) {
+                ['solidFill', 'gradFill', 'pattFill', 'blipFill', 'noFill'].forEach(fillType => {
+                    Array.from(defaultProps.getElementsByTagNameNS(DRAWINGML_NAMESPACE, fillType))
+                        .forEach(node => node.parentNode?.removeChild(node));
+                });
+            }
 
             targetNodes.forEach(n => pNode.removeChild(n));
 

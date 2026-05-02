@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { EmailSettings } from '../settings/EmailSettings';
+import { ProviderId, PROVIDERS, getProviderConfig } from '../../services/modelCatalog';
 
 interface TranslationOptionsProps {
     prompt: string;
@@ -13,11 +14,14 @@ interface TranslationOptionsProps {
     isAnalyzing: boolean;
     userEmail: string;
     userName: string;
-    // New Props for restored features
-    glossary: string; // Add glossary prop
-    onGlossaryChange: (value: string) => void; // Add handler
-    apiKey: string; // Add apiKey prop
-    onApiKeyChange: (value: string) => void; // Add handler
+    glossary: string;
+    onGlossaryChange: (value: string) => void;
+    apiKey: string;
+    onApiKeyChange: (value: string) => void;
+    provider: ProviderId;
+    onProviderChange: (provider: ProviderId) => void;
+    model: string;
+    onModelChange: (model: string) => void;
 }
 
 export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
@@ -29,10 +33,11 @@ export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
     isAnalyzing,
     userEmail, userName,
     glossary, onGlossaryChange,
-    apiKey, onApiKeyChange
+    apiKey, onApiKeyChange,
+    provider, onProviderChange,
+    model, onModelChange,
 }) => {
 
-    // File Upload Helpers
     const handleFileRead = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -41,8 +46,10 @@ export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
             if (ev.target?.result) setter(ev.target.result as string);
         };
         reader.readAsText(file);
-        e.target.value = ''; // Reset input
+        e.target.value = '';
     };
+
+    const providerConfig = getProviderConfig(provider);
 
     return (
         <section className="flex-1 bg-white border-2 border-border-strong rounded-xl shadow-float flex flex-col animate-scale-in delay-75 h-full">
@@ -59,31 +66,69 @@ export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
 
             <div className="p-4 space-y-5 overflow-y-auto custom-scrollbar flex-1 bg-white">
 
-                {/* 1. API Key Setup (Restored) */}
-                <div className="bg-gray-light border border-gray-200 rounded-lg p-3.5 hover:border-black transition-colors">
-                    <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1.5 mb-2">
-                        <span className="material-symbols-outlined text-xs">key</span> Gemini API Key
-                        <span className="text-[9px] bg-black text-white px-1.5 py-0.5 rounded-full font-bold">Recommended</span>
+                {/* 1. AI 모델 선택 */}
+                <div className="bg-gray-light border border-gray-200 rounded-lg p-3.5 space-y-3">
+                    <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-xs">smart_toy</span> AI 모델 선택
                     </label>
-                    <div className="relative">
-                        <input
-                            type="password"
-                            value={apiKey}
-                            onChange={(e) => onApiKeyChange(e.target.value)}
-                            placeholder="개인 API Key가 있다면 입력하세요 (없으면 공용 키 사용)"
-                            className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-xs text-black font-bold focus:border-primary outline-none transition-all placeholder-gray-400"
-                        />
-                        <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                            {apiKey ? (
-                                <span className="material-symbols-outlined text-green-600 text-xs">check_circle</span>
-                            ) : (
-                                <span className="material-symbols-outlined text-gray-400 text-xs">vpn_key</span>
-                            )}
+
+                    {/* Provider 드롭다운 */}
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 mb-1">프로바이더</p>
+                        <div className="relative">
+                            <select
+                                value={provider}
+                                onChange={(e) => onProviderChange(e.target.value as ProviderId)}
+                                className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-xs font-bold text-black appearance-none focus:border-primary transition-all outline-none cursor-pointer hover:border-black"
+                            >
+                                {PROVIDERS.map(p => (
+                                    <option key={p.id} value={p.id}>{p.label}</option>
+                                ))}
+                            </select>
+                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-sm">expand_more</span>
                         </div>
                     </div>
-                    <p className="text-[10px] font-bold text-gray-400 mt-1.5">
-                        * 개인 키를 사용하면 속도 제한 없이 더 안정적인 번역이 가능합니다.
-                    </p>
+
+                    {/* Model 드롭다운 */}
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 mb-1">모델</p>
+                        <div className="relative">
+                            <select
+                                value={model}
+                                onChange={(e) => onModelChange(e.target.value)}
+                                className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-xs font-bold text-black appearance-none focus:border-primary transition-all outline-none cursor-pointer hover:border-black"
+                            >
+                                {providerConfig.models.map(m => (
+                                    <option key={m.id} value={m.id}>{m.label} — {m.description}</option>
+                                ))}
+                            </select>
+                            <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-sm">expand_more</span>
+                        </div>
+                    </div>
+
+                    {/* API Key */}
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 mb-1">{providerConfig.apiKeyLabel}</p>
+                        <div className="relative">
+                            <input
+                                type="password"
+                                value={apiKey}
+                                onChange={(e) => onApiKeyChange(e.target.value)}
+                                placeholder={`${providerConfig.apiKeyPlaceholder} (없으면 공용 키 사용)`}
+                                className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-xs text-black font-bold focus:border-primary outline-none transition-all placeholder-gray-400"
+                            />
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                                {apiKey ? (
+                                    <span className="material-symbols-outlined text-green-600 text-xs">check_circle</span>
+                                ) : (
+                                    <span className="material-symbols-outlined text-gray-400 text-xs">vpn_key</span>
+                                )}
+                            </div>
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-400 mt-1">
+                            * 개인 키를 사용하면 속도 제한 없이 더 안정적인 번역이 가능합니다.
+                        </p>
+                    </div>
                 </div>
 
                 {/* 2. Language & Range */}
