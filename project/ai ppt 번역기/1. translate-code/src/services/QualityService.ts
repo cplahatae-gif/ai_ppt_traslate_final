@@ -58,7 +58,7 @@ IMPORTANT: All 'description' and 'reason' fields in the output JSON MUST be writ
 ${JSON.stringify(targetData)}`;
 
             const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.5-flash',
                 contents: prompt,
                 config: {
                     systemInstruction: systemInstruction,
