@@ -20,6 +20,7 @@ import { QualityResult } from './types';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { emailService } from './services/email/EmailService';
 import { authService } from './services/auth/AuthService';
+import { isSupabaseConfigured } from './lib/supabase';
 import { ProviderId, getProviderConfig, getApiKeyFromStorage, saveApiKeyToStorage } from './services/modelCatalog';
 
 type Status = 'idle' | 'analyzing' | 'translating' | 'building' | 'verifying' | 'done' | 'error';
@@ -300,7 +301,7 @@ const App: React.FC = () => {
   };
 
   if (loading) return <div className="min-h-screen bg-background-dark flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
-  if (!user) return <AuthOverlay onSuccess={checkUser} />;
+  if (isSupabaseConfigured() && !user) return <AuthOverlay onSuccess={checkUser} />;
 
   // Admin Dashboard (권한 없을 경우 대기 화면)
   // 로그아웃 핸들러
