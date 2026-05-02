@@ -157,15 +157,16 @@ const App: React.FC = () => {
   };
 
   const handleTranslate = useCallback(async () => {
-    if (!file || !user) return;
+    if (!file) return;
 
     let jobId: string | null = null;
     try {
-      const currentStatus = await tokenManager.getLimitStatus(user.id);
-      setTokenLimit(currentStatus);
-      if (!currentStatus.canProceed) throw new Error('일일 토큰 사용 한도에 도달했습니다.');
-
-      jobId = await jobService.createJob(user.id, file.name);
+      if (user) {
+        const currentStatus = await tokenManager.getLimitStatus(user.id);
+        setTokenLimit(currentStatus);
+        if (!currentStatus.canProceed) throw new Error('일일 토큰 사용 한도에 도달했습니다.');
+        jobId = await jobService.createJob(user.id, file.name);
+      }
 
       // Step 3 진입
       setStatus('analyzing');
@@ -209,9 +210,11 @@ const App: React.FC = () => {
       setProgressMessage('PPTX 파일 생성 중...');
       const translatedBlob = await replaceTextInPptx(file, translatedItems);
 
-      await tokenManager.logUsage(user.id, tokens);
-      const updatedStatus = await tokenManager.getLimitStatus(user.id);
-      setTokenLimit(updatedStatus);
+      if (user) {
+        await tokenManager.logUsage(user.id, tokens);
+        const updatedStatus = await tokenManager.getLimitStatus(user.id);
+        setTokenLimit(updatedStatus);
+      }
 
       if (jobId) await jobService.updateJob(jobId, 'completed', tokens);
 
@@ -219,9 +222,11 @@ const App: React.FC = () => {
       setStatus('verifying');
       setProgressMessage('AI 품질 분석 진행 중...');
 
-      const notifyEnabled = localStorage.getItem(`email_notify_${user.email}`) === 'true';
-      if (notifyEnabled) {
-        emailService.sendTranslationComplete(user.email, user.name, file.name, tokens).catch(console.error);
+      if (user) {
+        const notifyEnabled = localStorage.getItem(`email_notify_${user.email}`) === 'true';
+        if (notifyEnabled) {
+          emailService.sendTranslationComplete(user.email, user.name, file.name, tokens).catch(console.error);
+        }
       }
 
       const [qResponse] = await Promise.all([
@@ -231,8 +236,10 @@ const App: React.FC = () => {
 
       if (qResponse) {
         setQualityResult(qResponse.result);
-        await tokenManager.logUsage(user.id, qResponse.tokens);
-        setTokenLimit(await tokenManager.getLimitStatus(user.id));
+        if (user) {
+          await tokenManager.logUsage(user.id, qResponse.tokens);
+          setTokenLimit(await tokenManager.getLimitStatus(user.id));
+        }
       }
 
       const url = URL.createObjectURL(translatedBlob);
@@ -247,9 +254,11 @@ const App: React.FC = () => {
       setStatus('error');
       if (jobId) await jobService.updateJob(jobId, 'failed');
 
-      const notifyEnabled = localStorage.getItem(`email_notify_${user.email}`) === 'true';
-      if (notifyEnabled) {
-        emailService.sendTranslationFailed(user.email, user.name, file.name, errorMsg).catch(console.error);
+      if (user) {
+        const notifyEnabled = localStorage.getItem(`email_notify_${user.email}`) === 'true';
+        if (notifyEnabled) {
+          emailService.sendTranslationFailed(user.email, user.name, file.name, errorMsg).catch(console.error);
+        }
       }
     }
   }, [file, user, promptInstruction, glossary, startPage, endPage, apiKey, provider, model]);
@@ -314,7 +323,7 @@ const App: React.FC = () => {
     window.location.reload();
   };
 
-  if (!user.isApproved && !user.isAdmin) {
+  if (user && !user.isApproved && !user.isAdmin) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="w-full max-w-md p-8 bg-white rounded-xl border-2 border-black text-center shadow-float">
@@ -330,14 +339,14 @@ const App: React.FC = () => {
   }
 
   // 관리자 대시보드 표시
-  if (showAdminDashboard && user.isAdmin) {
+  if (showAdminDashboard && user?.isAdmin) {
     return <AdminDashboard currentUser={user} onLogout={handleLogout} onBack={() => setShowAdminDashboard(false)} />;
   }
 
   return (
     <MainLayout user={user} onLogout={handleLogout} onLogin={() => window.location.reload()}>
       {/* 관리자 버튼 */}
-      {user.isAdmin && (
+      {user?.isAdmin && (
         <div className="mb-4 flex justify-end">
           <button
             onClick={() => setShowAdminDashboard(true)}
@@ -370,8 +379,8 @@ const App: React.FC = () => {
             totalSlides={totalSlides}
             onTranslate={handleTranslate}
             isAnalyzing={status === 'analyzing'}
-            userEmail={user.email}
-            userName={user.name}
+            userEmail={user?.email ?? ''}
+            userName={user?.name ?? ''}
             glossary={glossary}
             onGlossaryChange={setGlossary}
             apiKey={apiKey}
