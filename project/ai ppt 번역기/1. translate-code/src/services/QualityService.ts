@@ -22,13 +22,17 @@ export class QualityService {
 
         const ai = new GoogleGenAI({ apiKey });
 
-        // 전수 검사: 모든 텍스트를 검증합니다.
-        // 데이터가 많을 경우를 대비하여 index 정보를 포함한 객체 배열로 변환
-        const targetData = originalTexts.map((text, index) => ({
-            index,
-            original: text,
-            translated: translatedTexts[index]
-        }));
+        // 품질 검증: 최대 30개 항목으로 제한해 응답 크기 초과 방지
+        const MAX_ITEMS = 30;
+        const MAX_CHARS = 4000;
+        let charCount = 0;
+        const targetData = originalTexts
+            .map((text, index) => ({ index, original: text, translated: translatedTexts[index] }))
+            .slice(0, MAX_ITEMS)
+            .filter(item => {
+                charCount += (item.original.length + item.translated.length);
+                return charCount <= MAX_CHARS;
+            });
 
         try {
             const systemInstruction = `You are an expert quality assurance linguist specializing in Korean to English PPT translations.
@@ -62,6 +66,7 @@ ${JSON.stringify(targetData)}`;
                 contents: prompt,
                 config: {
                     systemInstruction: systemInstruction,
+                    maxOutputTokens: 2048,
                     responseMimeType: "application/json",
                     responseSchema: {
                         type: Type.OBJECT,
