@@ -80,7 +80,7 @@ export class TokenManager {
     /**
      * 실제 사용된 토큰량을 기록합니다 (1.3)
      */
-    async logUsage(userId: string, tokensUsed: number, endpoint: string = 'gemini-3-flash-preview'): Promise<void> {
+    async logUsage(userId: string, tokensUsed: number, endpoint: string = 'gemini-2.5-flash'): Promise<void> {
         if (!isSupabaseConfigured()) return;
 
         try {
