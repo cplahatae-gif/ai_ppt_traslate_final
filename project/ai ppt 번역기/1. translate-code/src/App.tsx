@@ -89,7 +89,7 @@ const App: React.FC = () => {
 
   // Helper: Determine Current Step
   const currentStep = useMemo(() => {
-    if (status === 'translating' || status === 'building' || status === 'verifying' || status === 'done') return 3;
+    if (status === 'analyzing' || status === 'translating' || status === 'building' || status === 'verifying' || status === 'done' || status === 'error') return 3;
     if (file) return 2;
     return 1;
   }, [status, file]);
@@ -397,19 +397,31 @@ const App: React.FC = () => {
       {currentStep === 3 && (
         <div className="w-full max-w-3xl mx-auto space-y-8 animate-fade-in">
           {/* Status Display Area */}
-          {status !== 'done' && (
+          {status !== 'done' && status !== 'error' && (
             <div className="bg-white dark:bg-surface-dark p-8 rounded-xl border border-border-light dark:border-border-dark shadow-lg text-center">
               <div className="mb-6 flex justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
               </div>
               <h3 className="text-xl font-bold mb-2">{status === 'translating' ? 'AI 번역 진행 중' : '작업 처리 중'}</h3>
               <p className="text-slate-500">{progressMessage}</p>
-              {/* Token Limit Info */}
               {tokenLimit && (
                 <div className="mt-4 text-xs text-slate-400">
                   일일 토큰 사용량: {tokenLimit.dailyUsed.toLocaleString()} / {tokenLimit.dailyLimit.toLocaleString()}
                 </div>
               )}
+            </div>
+          )}
+          {/* Error Display */}
+          {status === 'error' && (
+            <div className="bg-white dark:bg-surface-dark p-8 rounded-xl border-2 border-red-400 shadow-lg text-center">
+              <div className="mb-4 flex justify-center">
+                <span className="material-symbols-outlined text-5xl text-red-500">error</span>
+              </div>
+              <h3 className="text-xl font-bold mb-2 text-red-600">오류가 발생했습니다</h3>
+              <p className="text-slate-500 mb-6">{error || '알 수 없는 오류가 발생했습니다.'}</p>
+              <button onClick={resetState} className="px-6 py-2 bg-black hover:bg-gray-800 text-white font-bold rounded-lg transition-colors">
+                처음으로 돌아가기
+              </button>
             </div>
           )}
 
