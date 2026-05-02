@@ -462,14 +462,6 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-500 text-center">
-              {error}
-              <div className="mt-4">
-                <button onClick={resetState} className="text-sm underline">처음으로 돌아가기</button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </MainLayout>
