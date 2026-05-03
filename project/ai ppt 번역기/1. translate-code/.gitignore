@@ -32,3 +32,5 @@ build.log
 .env
 .env.local
 ! .env.example
+.env*.local
+.gstack/
