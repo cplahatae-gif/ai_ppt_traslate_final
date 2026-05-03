@@ -11,8 +11,9 @@ export class QualityService {
         jobId: string,
         originalTexts: string[],
         translatedTexts: string[],
-        apiKey: string
     ): Promise<{ result: QualityResult, tokens: number } | null> {
+        // Quality verification always uses Gemini regardless of translation provider
+        const apiKey = localStorage.getItem('gemini_api_key') || '';
         if (!apiKey) return null;
 
         const ai = new GoogleGenAI({ apiKey });

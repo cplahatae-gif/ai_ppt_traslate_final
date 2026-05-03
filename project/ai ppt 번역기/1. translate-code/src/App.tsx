@@ -65,7 +65,7 @@ const App: React.FC = () => {
     if (user?.apiKey) {
       setApiKey(user.apiKey);
     } else {
-      const localKey = localStorage.getItem('gemini_api_key') || '';
+      const localKey = getApiKeyFromStorage(provider);
       if (localKey) setApiKey(localKey);
     }
     if (user) {
@@ -230,7 +230,7 @@ const App: React.FC = () => {
       }
 
       const [qResponse] = await Promise.all([
-        qualityService.verify(jobId!, originalTexts, translatedTexts, apiKey),
+        qualityService.verify(jobId!, originalTexts, translatedTexts),
         new Promise(resolve => setTimeout(resolve, 1500))
       ]);
 
