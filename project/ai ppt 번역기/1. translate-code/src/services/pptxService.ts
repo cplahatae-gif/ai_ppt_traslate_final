@@ -351,6 +351,24 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
 
         const paragraphNodes = xmlDoc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p');
 
+        // Pre-compute per-txBody max expansion ratio for fontScale
+        const txBodyScales = new Map<Element, number>();
+        for (const item of itemsBySlide[slidePath]) {
+            const pn = paragraphNodes[item.paragraphIndex];
+            if (!pn || !item.originalLength || item.originalLength <= 30) continue;
+            const rawLen = item.text.replace(/<[^>]*>/g, '').length;
+            const ratio = rawLen / item.originalLength;
+            let par: Element | null = pn.parentElement;
+            while (par) {
+                if (par.tagName.endsWith('txBody')) {
+                    const cur = txBodyScales.get(par) ?? 1.0;
+                    if (ratio > cur) txBodyScales.set(par, ratio);
+                    break;
+                }
+                par = par.parentElement;
+            }
+        }
+
         for (const item of itemsBySlide[slidePath]) {
             const pNode = paragraphNodes[item.paragraphIndex];
 
@@ -358,20 +376,32 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
 
             adjustLineSpacing(pNode); // P3 Fix: 줄간격 한 단계 다운
 
-            // 텍스트 상자 자동 맞춤 로직 (기존 유지)
+            // 텍스트 상자 자동 맞춤 (normAutofit + fontScale 명시)
             let parent = pNode.parentElement;
             while (parent) {
                 if (parent.tagName.endsWith('txBody')) {
-                    let bodyPr = parent.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'bodyPr')[0];
+                    const bodyPr = parent.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'bodyPr')[0];
                     if (bodyPr) {
                         const noAutofit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'noAutofit')[0];
                         if (noAutofit) bodyPr.removeChild(noAutofit);
 
-                        if (!bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'normAutofit')[0] &&
-                            !bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spAutoFit')[0]) {
-                            // spAutoFit이 더 안전한 경우가 많음 (도형 크기에 맞춤)
-                            const normAutofit = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:normAutofit');
-                            bodyPr.appendChild(normAutofit);
+                        const existingSpAuto = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spAutoFit')[0];
+                        if (!existingSpAuto) {
+                            // fontScale: 1/expansionRatio * 100000, clamped [65000, 100000]
+                            const expansionRatio = txBodyScales.get(parent) ?? 1.0;
+                            const fontScaleVal = expansionRatio > 1.05
+                                ? Math.round(Math.max(65000, Math.min(100000, (1 / expansionRatio) * 100000)))
+                                : 100000;
+                            const existingNorm = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'normAutofit')[0];
+                            if (existingNorm) {
+                                existingNorm.setAttribute('fontScale', String(fontScaleVal));
+                                existingNorm.setAttribute('lnSpcReduction', '0');
+                            } else {
+                                const normAutofit = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:normAutofit');
+                                normAutofit.setAttribute('fontScale', String(fontScaleVal));
+                                normAutofit.setAttribute('lnSpcReduction', '0');
+                                bodyPr.appendChild(normAutofit);
+                            }
                         }
                     }
                     break;

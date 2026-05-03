@@ -41,10 +41,10 @@ export const openaiTranslateBatch: TranslateBatchFn = async (
     const data: OpenAIResponse = await response.json();
     const content = data.choices?.[0]?.message?.content || '{}';
     const parsed = JSON.parse(content);
-    const translations: unknown = parsed.translations ?? parsed.result ?? parsed.items ?? Object.values(parsed)[0];
+    const translations: unknown = parsed.translations ?? parsed.result ?? parsed.items;
 
     if (!Array.isArray(translations) || translations.length !== batch.length) {
-        throw new Error(`Expected ${batch.length} items, received ${Array.isArray(translations) ? translations.length : 'non-array'}`);
+        throw new Error(`Expected ${batch.length} translations, got ${Array.isArray(translations) ? translations.length : `${typeof translations} (keys: ${Object.keys(parsed).join(', ')})`}`);
     }
 
     return translations as string[];
