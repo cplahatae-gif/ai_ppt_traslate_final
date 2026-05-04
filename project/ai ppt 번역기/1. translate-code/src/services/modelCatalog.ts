@@ -63,8 +63,10 @@ export const getProviderConfig = (id: ProviderId): ProviderConfig =>
 
 const REMEMBER_KEY = 'api_key_remember';
 
-export const isApiKeyRemembered = (): boolean =>
-    localStorage.getItem(REMEMBER_KEY) === 'true';
+export const isApiKeyRemembered = (): boolean => {
+    const val = localStorage.getItem(REMEMBER_KEY);
+    return val === null ? true : val === 'true';
+};
 
 export const setApiKeyRemember = (remember: boolean): void => {
     localStorage.setItem(REMEMBER_KEY, String(remember));
