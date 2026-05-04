@@ -29,6 +29,8 @@ const App: React.FC = () => {
   const { user, loading, checkUser, updateApiKey: saveApiKeyToDb } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [promptInstruction, setPromptInstruction] = useState('');
+  const [guidePrompt, setGuidePrompt] = useState('');
+  const [guideLoaded, setGuideLoaded] = useState(false);
   const [glossary, setGlossary] = useState('');
 
   const [provider, setProvider] = useState<ProviderId>(() =>
@@ -77,7 +79,10 @@ const App: React.FC = () => {
     const loadResources = async () => {
       try {
         const promptRes = await fetch('/guide.md');
-        if (promptRes.ok) setPromptInstruction(await promptRes.text());
+        if (promptRes.ok) {
+          setGuidePrompt(await promptRes.text());
+          setGuideLoaded(true);
+        }
         const glossaryRes = await fetch('/glossary.txt');
         if (glossaryRes.ok) setGlossary(await glossaryRes.text());
       } catch (err) {
@@ -194,7 +199,8 @@ const App: React.FC = () => {
         setProgressMessage(`번역 진행 중... ${percent}% 완료`);
       };
 
-      const translatedTexts = await translateTexts(originalTexts, onProgress, promptInstruction, glossary, 20, apiKey, provider, model);
+      const combinedPrompt = [guidePrompt, promptInstruction].filter(s => s.trim()).join('\n\n');
+      const translatedTexts = await translateTexts(originalTexts, onProgress, combinedPrompt, glossary, 20, apiKey, provider, model);
 
       const translatedItems: TextItem[] = textItems.map((item, index) => ({
         ...item,
@@ -374,6 +380,7 @@ const App: React.FC = () => {
           <TranslationOptions
             prompt={promptInstruction}
             onPromptChange={setPromptInstruction}
+            guideLoaded={guideLoaded}
             startPage={startPage} setStartPage={setStartPage}
             endPage={endPage} setEndPage={setEndPage}
             totalSlides={totalSlides}

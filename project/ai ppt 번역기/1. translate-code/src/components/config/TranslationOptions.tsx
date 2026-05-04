@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { EmailSettings } from '../settings/EmailSettings';
-import { ProviderId, PROVIDERS, getProviderConfig } from '../../services/modelCatalog';
+import { ProviderId, PROVIDERS, getProviderConfig, isApiKeyRemembered, setApiKeyRemember } from '../../services/modelCatalog';
 
 interface TranslationOptionsProps {
     prompt: string;
     onPromptChange: (value: string) => void;
+    guideLoaded?: boolean;
     startPage: number;
     setStartPage: (val: number) => void;
     endPage: number;
@@ -26,6 +27,7 @@ interface TranslationOptionsProps {
 
 export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
     prompt, onPromptChange,
+    guideLoaded,
     startPage, setStartPage,
     endPage, setEndPage,
     totalSlides,
@@ -37,6 +39,17 @@ export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
     provider, onProviderChange,
     model, onModelChange,
 }) => {
+    const [rememberKey, setRememberKey] = useState(isApiKeyRemembered);
+
+    const handleRememberChange = (checked: boolean) => {
+        setRememberKey(checked);
+        setApiKeyRemember(checked);
+        if (checked && apiKey) {
+            // Persist current key to localStorage when user enables "remember"
+            const { localStorageKey } = getProviderConfig(provider);
+            localStorage.setItem(localStorageKey, apiKey);
+        }
+    };
 
     const handleFileRead = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
         const file = e.target.files?.[0];
@@ -125,8 +138,20 @@ export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
                                 )}
                             </div>
                         </div>
-                        <p className="text-[10px] font-bold text-gray-400 mt-1">
-                            * 개인 키를 사용하면 속도 제한 없이 더 안정적인 번역이 가능합니다.
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                            <input
+                                type="checkbox"
+                                id="rememberKey"
+                                checked={rememberKey}
+                                onChange={(e) => handleRememberChange(e.target.checked)}
+                                className="w-3 h-3 accent-primary cursor-pointer"
+                            />
+                            <label htmlFor="rememberKey" className="text-[10px] font-bold text-gray-400 cursor-pointer select-none">
+                                이 기기에서 API 키 기억하기
+                            </label>
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-400 mt-0.5">
+                            * 체크 해제 시 탭 닫으면 키가 삭제됩니다.
                         </p>
                     </div>
                 </div>
@@ -178,18 +203,24 @@ export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
                 <div className="space-y-1.5">
                     <div className="flex justify-between items-end">
                         <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1">
-                            <span className="material-symbols-outlined text-xs">description</span> 프롬프트 지침
+                            <span className="material-symbols-outlined text-xs">description</span> 추가 지시사항
                         </label>
                         <label className="cursor-pointer text-[10px] font-bold text-primary hover:text-black flex items-center gap-0.5 px-1.5 py-0.5 hover:bg-gray-100 rounded transition-colors">
                             <span className="material-symbols-outlined text-xs">upload_file</span> 파일 불러오기
                             <input type="file" accept=".txt,.md" className="hidden" onChange={(e) => handleFileRead(e, onPromptChange)} />
                         </label>
                     </div>
+                    {guideLoaded && (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 border border-blue-200 rounded text-[10px] text-blue-600 font-bold">
+                            <span className="material-symbols-outlined text-xs">check_circle</span>
+                            기본 번역 가이드 적용됨 (guide.md)
+                        </div>
+                    )}
                     <textarea
                         value={prompt}
                         onChange={(e) => onPromptChange(e.target.value)}
                         className="w-full bg-white border border-gray-200 rounded-md p-3 text-xs font-medium text-black focus:border-primary outline-none transition-all resize-none shadow-inner custom-scrollbar hover:border-black"
-                        placeholder="예: '격식 있는 비즈니스 톤으로 번역해줘', 'IT 전문 용어는 영어 그대로 유지해줘'..."
+                        placeholder="예: '격식 있는 비즈니스 톤으로 번역해줘', 'IT 전문 용어는 영어 그대로 유지해줘'... (기본 가이드에 덧붙여집니다)"
                         rows={3}
                     ></textarea>
                 </div>

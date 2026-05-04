@@ -61,12 +61,31 @@ export const PROVIDERS: ProviderConfig[] = [
 export const getProviderConfig = (id: ProviderId): ProviderConfig =>
     PROVIDERS.find(p => p.id === id) ?? PROVIDERS[0];
 
+const REMEMBER_KEY = 'api_key_remember';
+
+export const isApiKeyRemembered = (): boolean =>
+    localStorage.getItem(REMEMBER_KEY) === 'true';
+
+export const setApiKeyRemember = (remember: boolean): void => {
+    localStorage.setItem(REMEMBER_KEY, String(remember));
+    if (!remember) {
+        PROVIDERS.forEach(p => localStorage.removeItem(p.localStorageKey));
+    }
+};
+
 export const getApiKeyFromStorage = (providerId: ProviderId): string => {
     const config = getProviderConfig(providerId);
-    return localStorage.getItem(config.localStorageKey) || '';
+    return (
+        sessionStorage.getItem(config.localStorageKey) ||
+        (isApiKeyRemembered() ? localStorage.getItem(config.localStorageKey) : '') ||
+        ''
+    );
 };
 
 export const saveApiKeyToStorage = (providerId: ProviderId, key: string): void => {
     const config = getProviderConfig(providerId);
-    localStorage.setItem(config.localStorageKey, key);
+    sessionStorage.setItem(config.localStorageKey, key);
+    if (isApiKeyRemembered()) {
+        localStorage.setItem(config.localStorageKey, key);
+    }
 };
