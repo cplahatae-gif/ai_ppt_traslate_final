@@ -130,7 +130,7 @@ export { parsePPTX } from './pptxParser';
 export { loadGlossaryFromFile, parseGlossaryFile, getGlossaryStats } from './glossaryParser';
 export { analyzeComparison } from './comparisonAnalyzer';
 export { calculateScore, getScoreSummary, getScoreBreakdown } from './qualityScorer';
-export { generateReport, generateMarkdownReport, exportAsJSON } from './reportGenerator';
+export { generateReport, generateMarkdownReport, exportAsJSON, generateRetranslationInstructions } from './reportGenerator';
 export { evaluateWithAI, validateApiKey } from './geminiService';
 export type { AIEvaluationResult, AIIssue, TextPairForEvaluation } from './geminiService';
 export * from './types';

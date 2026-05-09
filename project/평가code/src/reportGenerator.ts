@@ -459,3 +459,54 @@ ${report.summary}
 export function exportAsJSON(output: EvaluationOutput): string {
     return JSON.stringify(output, null, 2);
 }
+
+/**
+ * 평가 결과를 번역앱의 "추가 지시사항"용 텍스트로 변환합니다.
+ * 사용자가 번역앱에 붙여넣어 재번역 시 이슈를 우선 해결하도록 LLM에 지시.
+ */
+export function generateRetranslationInstructions(output: EvaluationOutput): string {
+    const lines: string[] = [];
+    lines.push('# 재번역 시 우선 해결할 이슈');
+    lines.push('');
+    lines.push(`이전 번역(${output.metadata.translatedFileName})의 품질 점수: ${output.score.total}/100 (${output.score.grade}).`);
+    lines.push('아래 이슈들을 반드시 반영해서 다시 번역해주세요.');
+    lines.push('');
+
+    const high = output.issues.filter(i => i.severity === 'high');
+    const medium = output.issues.filter(i => i.severity === 'medium');
+    const mismatches = output.report.glossaryMismatches;
+
+    if (high.length > 0) {
+        lines.push(`## 🔴 High Priority (${high.length}건)`);
+        high.slice(0, 20).forEach(i => {
+            lines.push(`- Slide ${i.slideNumber} (${i.location}): ${i.description}${i.suggestion ? ` → ${i.suggestion}` : ''}`);
+        });
+        if (high.length > 20) lines.push(`- ... 외 ${high.length - 20}건`);
+        lines.push('');
+    }
+
+    if (medium.length > 0) {
+        lines.push(`## 🟡 Medium Priority (${medium.length}건)`);
+        medium.slice(0, 15).forEach(i => {
+            lines.push(`- Slide ${i.slideNumber} (${i.location}): ${i.description}${i.suggestion ? ` → ${i.suggestion}` : ''}`);
+        });
+        if (medium.length > 15) lines.push(`- ... 외 ${medium.length - 15}건`);
+        lines.push('');
+    }
+
+    if (mismatches.length > 0) {
+        lines.push(`## 📖 단어장 미준수 (${mismatches.length}건) — 반드시 권장 표현 사용`);
+        mismatches.slice(0, 30).forEach(m => {
+            lines.push(`- "${m.korean}" → 권장: "${m.expectedEnglish[0]}" (이전 번역: "${m.actualEnglish.substring(0, 40)}${m.actualEnglish.length > 40 ? '...' : ''}")`);
+        });
+        if (mismatches.length > 30) lines.push(`- ... 외 ${mismatches.length - 30}건`);
+        lines.push('');
+    }
+
+    lines.push('## 추가 가이드');
+    lines.push('- 기존 톤/스타일을 유지하되 위 이슈들을 우선 수정');
+    lines.push('- 단어장의 권장 표현을 일관되게 사용');
+    lines.push('- 텍스트 박스를 벗어나는 긴 번역은 더 간결한 표현으로 단축');
+
+    return lines.join('\n');
+}

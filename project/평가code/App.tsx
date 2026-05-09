@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import type { EvaluationOutput, EvaluationOptions } from './src/types';
-import { evaluateTranslation, evaluateWithAI, getDefaultOptions, generateMarkdownReport, exportAsJSON } from './src/index';
+import { evaluateTranslation, evaluateWithAI, getDefaultOptions, generateMarkdownReport, exportAsJSON, generateRetranslationInstructions } from './src/index';
 import type { AIEvaluationResult } from './src/geminiService';
 
 // 상태 아이콘
@@ -363,6 +363,20 @@ export default function App() {
         URL.revokeObjectURL(url);
     };
 
+    // 재번역용 지시사항을 클립보드로 복사
+    const [copiedInstructions, setCopiedInstructions] = useState(false);
+    const handleCopyRetranslationInstructions = async () => {
+        if (!result) return;
+        const text = generateRetranslationInstructions(result);
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedInstructions(true);
+            setTimeout(() => setCopiedInstructions(false), 2500);
+        } catch (err) {
+            setError('클립보드 복사 실패. 브라우저 권한을 확인해주세요.');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
             <div className="max-w-6xl mx-auto p-6">
@@ -534,6 +548,13 @@ export default function App() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
+                                    <button
+                                        onClick={handleCopyRetranslationInstructions}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                                        title="이슈 목록을 번역앱의 '추가 지시사항' 입력란에 붙여넣어 재번역하세요"
+                                    >
+                                        {copiedInstructions ? '✅ 복사 완료' : '📋 재번역 지시사항 복사'}
+                                    </button>
                                     <button
                                         onClick={() => handleDownload('md')}
                                         className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
