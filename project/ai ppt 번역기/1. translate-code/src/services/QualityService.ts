@@ -3,7 +3,6 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { QualityResult } from '../types';
 
 export class QualityService {
@@ -73,17 +72,6 @@ Return this exact JSON structure:
             const inputTokens = Math.ceil(prompt.length / 4);
             const outputTokens = Math.ceil(raw.length / 4);
             const totalTokens = inputTokens + outputTokens;
-
-            if (isSupabaseConfigured() && jobId) {
-                await supabase!
-                    .from('quality_results')
-                    .insert({
-                        translation_job_id: jobId,
-                        overall_score: result.overallScore,
-                        criteria_scores: result.criteriaScores,
-                        issues: result.issues
-                    });
-            }
 
             return { result, tokens: totalTokens };
         } catch (error) {

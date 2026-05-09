@@ -1,43 +1,9 @@
 // ============================================
-// Enhanced PPT Translator - Type Definitions
+// PPT Translator - Type Definitions
 // ============================================
 
 // ============================================
-// User & Authentication Types (Requirement 2)
-// ============================================
-
-export interface User {
-    id: string;
-    email: string;
-    name: string;
-    isApproved: boolean;
-    isAdmin: boolean;
-    apiKey?: string;
-    accessCount: number;
-    createdAt: Date;
-    lastLoginAt: Date;
-}
-
-export interface UserRegistrationData {
-    email: string;
-    name: string;
-    password: string;
-}
-
-export interface LoginCredentials {
-    email: string;
-    password: string;
-}
-
-export interface AuthResult {
-    success: boolean;
-    user?: User;
-    error?: string;
-    requiresApproval?: boolean;
-}
-
-// ============================================
-// Token Management Types (Requirement 1)
+// Token Management Types
 // ============================================
 
 export interface TokenEstimate {
@@ -47,14 +13,6 @@ export interface TokenEstimate {
     suggestedPageLimit?: number;
 }
 
-export interface LimitStatus {
-    dailyUsed: number;
-    dailyLimit: number;
-    minuteUsed: number;
-    minuteLimit: number;
-    canProceed: boolean;
-}
-
 export interface PageLimitSuggestion {
     recommendedPages: number[];
     reason: string;
@@ -62,7 +20,7 @@ export interface PageLimitSuggestion {
 }
 
 // ============================================
-// Quality Verification Types (Requirement 5)
+// Quality Verification Types
 // ============================================
 
 export interface QualityResult {
@@ -116,7 +74,7 @@ export interface ImprovementSuggestion {
 }
 
 // ============================================
-// Translation Types (Requirement 8)
+// Translation Types
 // ============================================
 
 export enum DocumentType {
@@ -125,96 +83,12 @@ export enum DocumentType {
     CAMPAIGN = 'campaign'
 }
 
-export interface TranslationOptions {
-    pageRange?: [number, number];
-    targetLanguage: string;
-    documentType: DocumentType;
-    userId: string;
-    qualityCheck: boolean;
-}
-
 export interface TranslationResult {
     success: boolean;
     translatedFile?: Blob;
     qualityResult?: QualityResult;
     tokensUsed: number;
     error?: string;
-}
-
-export interface TranslationJob {
-    id: string;
-    userId: string;
-    fileName: string;
-    status: 'pending' | 'translating' | 'completed' | 'failed';
-    downloadUrl?: string;
-    qualityScore?: number;
-    tokensUsed?: number;
-    createdAt: Date;
-    completedAt?: Date;
-}
-
-// ============================================
-// Admin Types (Requirement 3)
-// ============================================
-
-export interface UserStats {
-    userId: string;
-    userName: string;
-    email: string;
-    accessCount: number;
-    lastAccess: Date;
-    totalTranslations: number;
-    isActive: boolean;
-}
-
-export interface AccessLog {
-    id: string;
-    userId: string;
-    timestamp: Date;
-    action: string;
-    details?: string;
-    ipAddress?: string;
-}
-
-// ============================================
-// Email Notification Types (Requirement 6)
-// ============================================
-
-export interface EmailNotification {
-    to: string;
-    subject: string;
-    body: string;
-    translationJobId?: string;
-}
-
-export interface EmailResult {
-    success: boolean;
-    messageId?: string;
-    error?: string;
-}
-
-// ============================================
-// Local Storage Types
-// ============================================
-
-export interface LocalStorageData {
-    apiKey?: string;
-    userPreferences: UserPreferences;
-    recentTranslations: RecentTranslation[];
-}
-
-export interface UserPreferences {
-    theme: 'light' | 'dark';
-    defaultLanguage: string;
-    autoQualityCheck: boolean;
-    emailNotifications: boolean;
-}
-
-export interface RecentTranslation {
-    fileName: string;
-    timestamp: Date;
-    status: string;
-    downloadUrl?: string;
 }
 
 // ============================================

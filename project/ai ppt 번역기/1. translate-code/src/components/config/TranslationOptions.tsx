@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { EmailSettings } from '../settings/EmailSettings';
 import { ProviderId, PROVIDERS, getProviderConfig, isApiKeyRemembered, setApiKeyRemember } from '../../services/modelCatalog';
 
 interface TranslationOptionsProps {
@@ -13,8 +12,6 @@ interface TranslationOptionsProps {
     totalSlides: number;
     onTranslate: () => void;
     isAnalyzing: boolean;
-    userEmail: string;
-    userName: string;
     glossary: string;
     onGlossaryChange: (value: string) => void;
     apiKey: string;
@@ -33,7 +30,6 @@ export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
     totalSlides,
     onTranslate,
     isAnalyzing,
-    userEmail, userName,
     glossary, onGlossaryChange,
     apiKey, onApiKeyChange,
     provider, onProviderChange,
@@ -245,10 +241,6 @@ export const TranslationOptions: React.FC<TranslationOptionsProps> = ({
                     ></textarea>
                 </div>
 
-                {/* 5. Email Settings */}
-                <div className="pt-3 border-t border-gray-200 border-dashed">
-                    <EmailSettings userEmail={userEmail} userName={userName} />
-                </div>
             </div>
 
             {/* Footer Action */}

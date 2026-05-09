@@ -6,27 +6,17 @@ import { StepIndicator } from './components/common/StepIndicator';
 import { FileUploadArea } from './components/upload/FileUploadArea';
 import { FilePreviewCard } from './components/preview/FilePreviewCard';
 import { TranslationOptions } from './components/config/TranslationOptions';
-import { StatusDisplay } from './components/StatusDisplay';
 import { DownloadIcon } from './components/icons';
-import { useAuth } from './hooks/useAuth';
-import { AuthOverlay } from './components/auth/AuthOverlay';
-import { LimitStatus } from './types';
 
 import { tokenManager } from './services/TokenManager';
-import { jobService } from './services/JobService';
 import { qualityService } from './services/QualityService';
 import { QualityReport } from './components/QualityReport';
 import { QualityResult } from './types';
-import { AdminDashboard } from './components/admin/AdminDashboard';
-import { emailService } from './services/email/EmailService';
-import { authService } from './services/auth/AuthService';
-import { isSupabaseConfigured } from './lib/supabase';
 import { ProviderId, getProviderConfig, getApiKeyFromStorage, saveApiKeyToStorage } from './services/modelCatalog';
 
 type Status = 'idle' | 'analyzing' | 'translating' | 'building' | 'verifying' | 'done' | 'error';
 
 const App: React.FC = () => {
-  const { user, loading, checkUser, updateApiKey: saveApiKeyToDb } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [promptInstruction, setPromptInstruction] = useState('');
   const [guidePrompt, setGuidePrompt] = useState('');
@@ -54,26 +44,11 @@ const App: React.FC = () => {
   const [estimatedTokens, setEstimatedTokens] = useState(0);
   const [extractedCount, setExtractedCount] = useState(0);
 
-  const [tokenLimit, setTokenLimit] = useState<LimitStatus | null>(null);
   const [qualityResult, setQualityResult] = useState<QualityResult | null>(null);
-  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
 
   const originalTextsRef = React.useRef<string[]>([]);
   const translatedTextsRef = React.useRef<string[]>([]);
   const textItemsRef = React.useRef<TextItem[]>([]);
-
-  // Load initial data
-  useEffect(() => {
-    if (user?.apiKey) {
-      setApiKey(user.apiKey);
-    } else {
-      const localKey = getApiKeyFromStorage(provider);
-      if (localKey) setApiKey(localKey);
-    }
-    if (user) {
-      tokenManager.getLimitStatus(user.id).then(setTokenLimit);
-    }
-  }, [user]);
 
   useEffect(() => {
     const loadResources = async () => {
@@ -92,7 +67,6 @@ const App: React.FC = () => {
     loadResources();
   }, []);
 
-  // Helper: Determine Current Step
   const currentStep = useMemo(() => {
     if (status === 'analyzing' || status === 'translating' || status === 'building' || status === 'verifying' || status === 'done' || status === 'error') return 3;
     if (file) return 2;
@@ -113,11 +87,10 @@ const App: React.FC = () => {
     localStorage.setItem('ai_model', newModel);
   }, []);
 
-  const handleApiKeyChange = useCallback(async (newKey: string) => {
+  const handleApiKeyChange = useCallback((newKey: string) => {
     setApiKey(newKey);
     saveApiKeyToStorage(provider, newKey);
-    if (user) await saveApiKeyToDb(newKey);
-  }, [user, saveApiKeyToDb, provider]);
+  }, [provider]);
 
   const resetState = () => {
     setFile(null);
@@ -154,7 +127,7 @@ const App: React.FC = () => {
       setTotalSlides(count);
       setEndPage(count);
       setStartPage(1);
-      setStatus('idle'); // 분석 완료 후 Config 단계로 전환
+      setStatus('idle');
     } catch (e) {
       setError('파일을 분석하는 데 실패했습니다. 손상된 파일일 수 있습니다.');
       setStatus('error');
@@ -164,16 +137,7 @@ const App: React.FC = () => {
   const handleTranslate = useCallback(async () => {
     if (!file) return;
 
-    let jobId: string | null = null;
     try {
-      if (user) {
-        const currentStatus = await tokenManager.getLimitStatus(user.id);
-        setTokenLimit(currentStatus);
-        if (!currentStatus.canProceed) throw new Error('일일 토큰 사용 한도에 도달했습니다.');
-        jobId = await jobService.createJob(user.id, file.name);
-      }
-
-      // Step 3 진입
       setStatus('analyzing');
       setProgressMessage(`${startPage}~${endPage}페이지 텍스트 추출 중...`);
 
@@ -186,11 +150,9 @@ const App: React.FC = () => {
       if (originalTexts.length === 0) {
         setError('선택한 범위에서 번역할 텍스트를 찾을 수 없습니다.');
         setStatus('error');
-        if (jobId) await jobService.updateJob(jobId, 'failed');
         return;
       }
 
-      if (jobId) await jobService.updateJob(jobId, 'translating', tokens);
       setStatus('translating');
       setProgressMessage(`AI 번역 시작... (예상 토큰: ${tokens.toLocaleString()})`);
 
@@ -216,36 +178,16 @@ const App: React.FC = () => {
       setProgressMessage('PPTX 파일 생성 중...');
       const translatedBlob = await replaceTextInPptx(file, translatedItems);
 
-      if (user) {
-        await tokenManager.logUsage(user.id, tokens);
-        const updatedStatus = await tokenManager.getLimitStatus(user.id);
-        setTokenLimit(updatedStatus);
-      }
-
-      if (jobId) await jobService.updateJob(jobId, 'completed', tokens);
-
-      // Quality Check
       setStatus('verifying');
       setProgressMessage('AI 품질 분석 진행 중...');
 
-      if (user) {
-        const notifyEnabled = localStorage.getItem(`email_notify_${user.email}`) === 'true';
-        if (notifyEnabled) {
-          emailService.sendTranslationComplete(user.email, user.name, file.name, tokens).catch(console.error);
-        }
-      }
-
       const [qResponse] = await Promise.all([
-        qualityService.verify(jobId!, originalTexts, translatedTexts),
+        qualityService.verify('local', originalTexts, translatedTexts),
         new Promise(resolve => setTimeout(resolve, 1500))
       ]);
 
       if (qResponse) {
         setQualityResult(qResponse.result);
-        if (user) {
-          await tokenManager.logUsage(user.id, qResponse.tokens);
-          setTokenLimit(await tokenManager.getLimitStatus(user.id));
-        }
       }
 
       const url = URL.createObjectURL(translatedBlob);
@@ -258,16 +200,8 @@ const App: React.FC = () => {
       const errorMsg = err instanceof Error ? err.message : '알 수 없는 오류';
       setError(`오류: ${errorMsg}`);
       setStatus('error');
-      if (jobId) await jobService.updateJob(jobId, 'failed');
-
-      if (user) {
-        const notifyEnabled = localStorage.getItem(`email_notify_${user.email}`) === 'true';
-        if (notifyEnabled) {
-          emailService.sendTranslationFailed(user.email, user.name, file.name, errorMsg).catch(console.error);
-        }
-      }
     }
-  }, [file, user, promptInstruction, glossary, startPage, endPage, apiKey, provider, model]);
+  }, [file, promptInstruction, glossary, startPage, endPage, apiKey, provider, model, guidePrompt]);
 
   const handleApplyFixes = async (selectedIndices: number[]) => {
     if (!file || !qualityResult || selectedIndices.length === 0) return;
@@ -295,7 +229,6 @@ const App: React.FC = () => {
       translatedTextsRef.current = newTranslatedTexts;
       setStatus('done');
 
-      // 자동 다운로드
       const link = document.createElement('a');
       link.href = newUrl;
       link.download = getOutputFilename();
@@ -315,57 +248,10 @@ const App: React.FC = () => {
     return `${name}_p${startPage}-${endPage}_en.pptx`;
   };
 
-  if (loading) return <div className="min-h-screen bg-background-dark flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
-  if (isSupabaseConfigured() && !user) return <AuthOverlay onSuccess={checkUser} />;
-
-  // Admin Dashboard (권한 없을 경우 대기 화면)
-  // 로그아웃 핸들러
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
-    window.location.reload();
-  };
-
-  if (user && !user.isApproved && !user.isAdmin) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md p-8 bg-white rounded-xl border-2 border-black text-center shadow-float">
-          <h2 className="text-2xl font-black text-black mb-4">승인 대기 중</h2>
-          <p className="text-gray-600 mb-6">관리자가 계정을 승인할 때까지 잠시 기다려주세요.</p>
-          <div className="flex gap-3 justify-center">
-            <button onClick={checkUser} className="px-6 py-2 bg-primary hover:bg-primary-hover rounded-lg text-white font-bold transition-colors">새로고침</button>
-            <button onClick={handleLogout} className="px-6 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-black font-bold transition-colors">로그아웃</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // 관리자 대시보드 표시
-  if (showAdminDashboard && user?.isAdmin) {
-    return <AdminDashboard currentUser={user} onLogout={handleLogout} onBack={() => setShowAdminDashboard(false)} />;
-  }
-
   return (
-    <MainLayout user={user} onLogout={handleLogout} onLogin={() => window.location.reload()}>
-      {/* 관리자 버튼 */}
-      {user?.isAdmin && (
-        <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => setShowAdminDashboard(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg font-bold text-sm transition-colors shadow-md"
-          >
-            <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
-            관리자 대시보드
-          </button>
-        </div>
-      )}
+    <MainLayout>
       <StepIndicator currentStep={currentStep} />
 
-      {/* Step 1: Upload */}
       {currentStep === 1 && (
         <div className="animate-fade-in">
           <FileUploadArea onFileSelect={handleFileSelect} />
@@ -373,7 +259,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Step 2: Config */}
       {currentStep === 2 && file && (
         <div className="flex flex-col lg:flex-row gap-8 grow animate-fade-in">
           <FilePreviewCard file={file} slideCount={totalSlides > 0 ? totalSlides : null} />
@@ -386,8 +271,6 @@ const App: React.FC = () => {
             totalSlides={totalSlides}
             onTranslate={handleTranslate}
             isAnalyzing={status === 'analyzing'}
-            userEmail={user?.email ?? ''}
-            userName={user?.name ?? ''}
             glossary={glossary}
             onGlossaryChange={setGlossary}
             apiKey={apiKey}
@@ -400,10 +283,8 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Step 3: Processing & Results */}
       {currentStep === 3 && (
         <div className="w-full max-w-3xl mx-auto space-y-8 animate-fade-in">
-          {/* Status Display Area */}
           {status !== 'done' && status !== 'error' && (
             <div className="bg-white dark:bg-surface-dark p-8 rounded-xl border border-border-light dark:border-border-dark shadow-lg text-center">
               <div className="mb-6 flex justify-center">
@@ -411,14 +292,8 @@ const App: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold mb-2">{status === 'translating' ? 'AI 번역 진행 중' : '작업 처리 중'}</h3>
               <p className="text-slate-500">{progressMessage}</p>
-              {tokenLimit && (
-                <div className="mt-4 text-xs text-slate-400">
-                  일일 토큰 사용량: {tokenLimit.dailyUsed.toLocaleString()} / {tokenLimit.dailyLimit.toLocaleString()}
-                </div>
-              )}
             </div>
           )}
-          {/* Error Display */}
           {status === 'error' && (
             <div className="bg-white dark:bg-surface-dark p-8 rounded-xl border-2 border-red-400 shadow-lg text-center">
               <div className="mb-4 flex justify-center">
@@ -458,7 +333,6 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quality Report */}
               {qualityResult && (
                 <QualityReport
                   result={qualityResult}

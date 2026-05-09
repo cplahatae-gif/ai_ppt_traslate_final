@@ -4,6 +4,7 @@ import { buildSystemPrompt, getTranslateBatch, categorizeError } from './aiProvi
 
 const DEFAULT_BATCH_SIZE = 25;
 const MAX_RETRIES = 3;
+const CONCURRENCY = 2; // Gemini 15 RPM 안전선; Claude/OpenAI도 무리 없음
 
 export const estimateTokens = (texts: string[]): number => {
     const totalChars = texts.join('').length;
@@ -30,35 +31,40 @@ export const translateTexts = async (
         batches.push(koreanTexts.slice(i, i + batchSize));
     }
 
-    const allTranslatedTexts: string[] = [];
+    const results: string[][] = new Array(batches.length);
+    let nextBatchIdx = 0;
     let completedBatches = 0;
 
-    for (const batch of batches) {
+    const runBatchWithRetry = async (batch: string[]): Promise<string[]> => {
         let lastError: Error | null = null;
-
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 const systemPrompt = buildSystemPrompt(batch.length, promptInstruction, glossary);
-                const translated = await translateBatch(batch, systemPrompt, model, finalApiKey);
-                allTranslatedTexts.push(...translated);
-                lastError = null;
-                break;
+                return await translateBatch(batch, systemPrompt, model, finalApiKey);
             } catch (error) {
                 lastError = categorizeError(error);
-            }
-
-            if (attempt < MAX_RETRIES) {
-                await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+                if (attempt < MAX_RETRIES) {
+                    await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+                }
             }
         }
+        throw lastError;
+    };
 
-        if (lastError) throw lastError;
+    const workerCount = Math.min(CONCURRENCY, batches.length);
+    const workers = Array.from({ length: workerCount }, async () => {
+        while (true) {
+            const idx = nextBatchIdx++;
+            if (idx >= batches.length) break;
+            results[idx] = await runBatchWithRetry(batches[idx]);
+            completedBatches++;
+            if (onProgress) onProgress(completedBatches, batches.length);
+        }
+    });
 
-        completedBatches++;
-        if (onProgress) onProgress(completedBatches, batches.length);
-    }
+    await Promise.all(workers);
 
-    return allTranslatedTexts;
+    return results.flat();
 };
 
 /**
