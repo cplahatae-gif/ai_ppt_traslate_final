@@ -1,68 +1,86 @@
-# 🌐 AI PPT 번역기 (Korean → English)
+# AI PPT Translator
 
-**PowerPoint 파일을 AI로 자동 번역하는 웹 애플리케이션**
+Web app for translating Korean PowerPoint files into English with Gemini while
+preserving as much slide structure and text styling as possible.
 
-PPTX 파일을 업로드하면 AI가 내용을 영어로 번역하여 새로운 파일로 만들어 드립니다.
+The main application lives in `project/ai ppt 번역기/1. translate-code`.
 
----
+## What It Does
 
-## ✨ 주요 기능
+- Uploads `.pptx` files in the browser
+- Extracts slide text and sends translation batches to Gemini
+- Supports a safety terminology glossary and custom prompt guidance
+- Rebuilds a translated `.pptx` file for download
+- Preserves common text styling such as bold, italic, font size, line breaks,
+  and paragraph structure where possible
+- Includes quality-check and PPT inspection utilities used during development
 
-- 📄 **PPTX 파일 번역**: 한국어 PPT를 영어로 자동 번역
-- 🎨 **스타일 보존**: 볼드, 이탤릭, 줄바꿈 등 서식 유지
-- 📖 **용어집 지원**: 커스텀 용어집으로 일관된 번역
-- ⚙️ **프롬프트 커스터마이징**: 번역 스타일 조정 가능
-- 🔑 **API 키 지원**: 사용자 Gemini API 키 사용 가능
+## Current Status
 
----
+| Item | Status |
+| --- | --- |
+| Main app | `project/ai ppt 번역기/1. translate-code` |
+| UI stack | React 19 + Vite |
+| AI provider | Google Gemini |
+| Test runner | Vitest |
+| Deployment target | Vercel/static web hosting |
 
-## 🚀 데모
+## Repository Layout
 
-👉 **[라이브 데모 바로가기](https://1-translate-code-6387juvwa-has-projects-d8efd919.vercel.app)**
-
----
-
-## 🛠️ 기술 스택
-
-- **Frontend**: React + TypeScript + Vite
-- **AI**: Google Gemini API
-- **배포**: Vercel
-
----
-
-## 📁 프로젝트 구조
-
-```
-project/
-├── ai ppt 번역기/
-│   ├── 1. translate-code/    # 번역기 웹앱 코드
-│   ├── 2. ppt/               # 테스트 PPT 파일들
-│   └── 3. text/              # 용어집 파일들
-└── 평가code/                  # 품질 평가 도구
+```text
+.
+├── project/
+│   ├── ai ppt 번역기/
+│   │   ├── 1. translate-code/    # Main translator web app
+│   │   ├── 2. ppt/               # Sample and analysis PPT assets
+│   │   └── 3. text/              # Glossary and translation guide files
+│   └── 평가code/                 # Translation quality evaluation prototype
+├── docs/                         # Roadmap and dev notes
+└── README.md
 ```
 
----
+## Run Locally
 
-## 📝 사용 방법
+```bash
+cd "project/ai ppt 번역기/1. translate-code"
+npm install
+npm run dev
+```
 
-1. 웹사이트 접속
-2. PPTX 파일 업로드 (최대 50MB)
-3. (선택) API 키, 프롬프트, 용어집 설정
-4. "번역 시작하기" 클릭
-5. 번역된 파일 다운로드
+## Build
 
----
+```bash
+cd "project/ai ppt 번역기/1. translate-code"
+npm run build
+```
 
-## 📜 버전 히스토리
+## Test
 
-- **v2.3**: (2026.02.01) ✨ **형광펜 위치 보정**: 단어 순서 변경 시 태그 위치 자동 추적 보정 (프롬프트 강화)
-- **v2.2**: (2026.02.01) ✨ **형광펜/스타일 완벽 수정**: 텍스트 병합(Run Merging) 로직 적용으로 끊김/번짐 현상 해결
-- **v2.1**: (2026.02.01) 스타일 완벽 보존(XML Prepended), 폰트 스케일링 개선, 기본 가이드/용어집 자동 로드
-- **v2-update**: 스타일 보존 개선, 줄바꿈 지원, 용어집 통합
-- **main**: 초기 안정 버전
+```bash
+cd "project/ai ppt 번역기/1. translate-code"
+npm test
+```
 
----
+## Environment
 
-## 📄 라이선스
+Create `project/ai ppt 번역기/1. translate-code/.env.local` if you want to
+provide a default Gemini key for local development.
+
+```text
+VITE_GEMINI_API_KEY=your_gemini_api_key
+```
+
+Users can also enter their own Gemini API key in the app UI.
+
+## Development Notes
+
+- The repository contains analysis scripts for comparing PPT XML, layout, and
+  style preservation.
+- Highlight/background-color handling has been investigated separately and is
+  documented in `docs/DEVLOG_2026-02-01.md`.
+- Some sample materials are domain-specific. Review sample files before using
+  this repository as a public template.
+
+## License
 
 MIT License
