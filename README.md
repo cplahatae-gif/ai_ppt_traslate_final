@@ -1,5 +1,22 @@
 # AI PPT Translator
 
+<!-- PROJECT-INTRO:START -->
+
+## 프로젝트가 중요한 이유
+
+발표 자료는 조직의 지식이 압축된 결과물입니다. 언어 장벽 때문에 그 지식이 특정 사람이나 지역 안에만 머물러서는 안 됩니다. 이 프로젝트는 한국어 PowerPoint 자료를 영어로 번역하면서 슬라이드 구조와 표현을 최대한 보존해, 교육·업무·안전 자료의 전달 범위를 넓히는 것을 목표로 합니다.
+
+## 기술적으로 보여주는 것
+
+React 19, Vite, TypeScript 기반 웹앱으로 PPTX 업로드, 텍스트 추출, Gemini 번역 배치 처리, 안전 용어 glossary, prompt guidance, 번역 품질 검사, PPT 재구성을 수행합니다. 단순 텍스트 번역이 아니라 글꼴 크기, bold/italic, 줄바꿈, 문단 구조 같은 발표 자료의 맥락을 보존하는 데 초점을 둡니다.
+
+## 공개 프로젝트로서의 의미
+
+기술적으로는 AI 번역과 문서 구조 보존을 결합한 생산성 도구이며, 사회적으로는 전문 지식과 안전 지식의 접근성을 높이는 번역 인프라입니다.
+
+<!-- PROJECT-INTRO:END -->
+
+
 Web app for translating Korean PowerPoint files into English with Gemini while
 preserving as much slide structure and text styling as possible.
 
