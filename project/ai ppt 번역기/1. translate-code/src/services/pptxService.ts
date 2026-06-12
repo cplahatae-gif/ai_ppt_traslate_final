@@ -610,13 +610,17 @@ const adjustLineSpacing = (pNode: Element): void => {
     }
 };
 
-/** txBody의 bodyPr에 normAutofit fontScale을 기록합니다. (spAutoFit이면 도형이 자라므로 생략) */
+/**
+ * txBody의 bodyPr에 normAutofit fontScale을 기록합니다.
+ * spAutoFit(도형을 텍스트에 맞춰 확대)은 영문 확장 시 박스가 자라며 주변
+ * 레이아웃을 침범하므로 normAutofit(크기 고정+글자 축소)으로 교체합니다.
+ */
 const applyAutofit = (xmlDoc: Document, txBody: Element, fontScale: number): void => {
     const bodyPr = txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'bodyPr')[0];
     if (!bodyPr) return;
 
     const spAutoFit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spAutoFit')[0];
-    if (spAutoFit) return;
+    if (spAutoFit) bodyPr.removeChild(spAutoFit);
 
     const noAutofit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'noAutofit')[0];
     if (noAutofit) bodyPr.removeChild(noAutofit);

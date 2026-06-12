@@ -223,7 +223,9 @@ const findAncestorGroup = (node: Element): boolean => {
 const setAutofit = (xmlDoc: Document, txBody: Element, scale: number): void => {
     const bodyPr = txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'bodyPr')[0];
     if (!bodyPr) return;
-    if (bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spAutoFit')[0]) return;
+    // spAutoFit(도형 확대형)은 박스가 자라며 레이아웃을 침범 → 축소형으로 교체
+    const spAutoFit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spAutoFit')[0];
+    if (spAutoFit) bodyPr.removeChild(spAutoFit);
     const noAutofit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'noAutofit')[0];
     if (noAutofit) bodyPr.removeChild(noAutofit);
 

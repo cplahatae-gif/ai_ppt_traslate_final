@@ -198,6 +198,41 @@ describe('오버플로우 축소', () => {
         expect(xml).toContain('sz="900"');
     });
 
+    it('spAutoFit 박스는 텍스트 확장 시 normAutofit(크기고정+축소)으로 교체된다', async () => {
+        // spAutoFit = 도형이 텍스트에 맞춰 자람 → 영문 확장 시 주변 레이아웃 침범
+        const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:cSld><p:spTree>
+<p:sp>
+<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1905000" cy="240000"/></a:xfrm></p:spPr>
+<p:txBody><a:bodyPr><a:spAutoFit/></a:bodyPr>
+<a:p><a:r><a:rPr lang="ko-KR" sz="1600"/><a:t>상호의존적 단계</a:t></a:r></a:p>
+</p:txBody>
+</p:sp>
+</p:spTree></p:cSld>
+</p:sld>`;
+        const zip = new JSZip();
+        zip.file('ppt/slides/slide1.xml', xml);
+        const file = (await zip.generateAsync({ type: 'uint8array' })) as unknown as File;
+
+        const items = await extractTextFromPptx(file);
+        const translated: TextItem[] = [{
+            ...items[0],
+            text: 'Interdependent stage with extra descriptive words',
+            originalLength: 8,
+        }];
+
+        const blob = await replaceTextInPptx(file, translated);
+        const outXml = await readSlide(blob);
+        expect(outXml).not.toContain('spAutoFit');
+        expect(outXml).toContain('normAutofit');
+        const m = outXml.match(/fontScale="(\d+)"/);
+        expect(m).not.toBeNull();
+        expect(parseInt(m![1])).toBeLessThan(100000);
+        // 박스 크기는 원본 그대로
+        expect(outXml).toContain('cy="240000"');
+    });
+
     it('여백 0인 초소형 라벨 박스는 명시 여백으로 용량 계산 (高→High 과축소 회귀 방지)', async () => {
         // 20pt×22pt 박스 + lIns/rIns/tIns/bIns=0 — 기본 여백 가정 시 가용폭이 음수가 되어 과축소됨
         const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
