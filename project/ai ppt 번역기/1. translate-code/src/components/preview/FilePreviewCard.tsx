@@ -14,15 +14,45 @@ const THUMBNAIL_PATHS = [
     'ppt/media/thumbnail.jpg',
 ];
 
+const mimeForPath = (path: string): string =>
+    path.toLowerCase().endsWith('.png') ? 'image/png'
+        : path.toLowerCase().endsWith('.gif') ? 'image/gif'
+            : 'image/jpeg';
+
+// MIME 타입을 명시한 Blob URL 생성 (타입 없는 Blob은 일부 브라우저에서 <img> 렌더 거부)
+const entryToObjectUrl = async (zip: JSZip, path: string): Promise<string | null> => {
+    const entry = zip.file(path);
+    if (!entry) return null;
+    const data = await entry.async('uint8array');
+    if (data.length === 0) return null;
+    return URL.createObjectURL(new Blob([data], { type: mimeForPath(path) }));
+};
+
 async function extractThumbnail(file: File): Promise<string | null> {
     try {
         const zip = await JSZip.loadAsync(file);
+
+        // 1순위: PowerPoint가 저장한 문서 썸네일
         for (const path of THUMBNAIL_PATHS) {
-            const entry = zip.file(path);
-            if (entry) {
-                const blob = await entry.async('blob');
-                return URL.createObjectURL(blob);
+            const url = await entryToObjectUrl(zip, path);
+            if (url) return url;
+        }
+
+        // 2순위: 첫 슬라이드가 참조하는 이미지 중 가장 큰 것
+        const rels = zip.file('ppt/slides/_rels/slide1.xml.rels');
+        if (rels) {
+            const relsXml = await rels.async('string');
+            const candidates = Array.from(relsXml.matchAll(/Target="\.\.\/(media\/[^"]+\.(?:png|jpe?g|gif))"/gi))
+                .map(m => `ppt/${m[1]}`)
+                .slice(0, 5);
+            let best: { path: string; size: number } | null = null;
+            for (const path of candidates) {
+                const entry = zip.file(path);
+                if (!entry) continue;
+                const data = await entry.async('uint8array');
+                if (!best || data.length > best.size) best = { path, size: data.length };
             }
+            if (best) return entryToObjectUrl(zip, best.path);
         }
     } catch {
         // ZIP 파싱 실패 시 무시

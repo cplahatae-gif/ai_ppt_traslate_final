@@ -10,13 +10,17 @@ import { DownloadIcon } from './components/icons';
 
 import { tokenManager } from './services/TokenManager';
 import { qualityService } from './services/QualityService';
-import { QualityReport } from './components/QualityReport';
 import { auditDocument, AuditReport } from './services/documentAudit';
 import { AuditReportCard } from './components/AuditReportCard';
-import { QualityResult } from './types';
+import { validateTagPreservation } from './services/aiProvider';
 import { ProviderId, getProviderConfig, getApiKeyFromStorage, saveApiKeyToStorage } from './services/modelCatalog';
 
-type Status = 'idle' | 'analyzing' | 'translating' | 'building' | 'verifying' | 'done' | 'error';
+type Status = 'idle' | 'analyzing' | 'translating' | 'fixing' | 'building' | 'verifying' | 'done' | 'error';
+
+interface FixSummary {
+    retranslated: number;
+    suggestionsApplied: number;
+}
 
 const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -50,12 +54,8 @@ const App: React.FC = () => {
   const [estimatedTokens, setEstimatedTokens] = useState(0);
   const [extractedCount, setExtractedCount] = useState(0);
 
-  const [qualityResult, setQualityResult] = useState<QualityResult | null>(null);
   const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
-
-  const originalTextsRef = React.useRef<string[]>([]);
-  const translatedTextsRef = React.useRef<string[]>([]);
-  const textItemsRef = React.useRef<TextItem[]>([]);
+  const [fixSummary, setFixSummary] = useState<FixSummary | null>(null);
 
   useEffect(() => {
     const loadResources = async () => {
@@ -75,7 +75,7 @@ const App: React.FC = () => {
   }, []);
 
   const currentStep = useMemo(() => {
-    if (status === 'analyzing' || status === 'translating' || status === 'building' || status === 'verifying' || status === 'done' || status === 'error') return 3;
+    if (status === 'analyzing' || status === 'translating' || status === 'fixing' || status === 'building' || status === 'verifying' || status === 'done' || status === 'error') return 3;
     if (file) return 2;
     return 1;
   }, [status, file]);
@@ -111,8 +111,8 @@ const App: React.FC = () => {
     setEndPage(1);
     setEstimatedTokens(0);
     setExtractedCount(0);
-    setQualityResult(null);
     setAuditReport(null);
+    setFixSummary(null);
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     setDownloadUrl(null);
   };
@@ -126,8 +126,8 @@ const App: React.FC = () => {
     setStatus('analyzing');
     setProgressMessage('파일 구조 분석 중...');
     setError(null);
-    setQualityResult(null);
     setAuditReport(null);
+    setFixSummary(null);
     setDownloadUrl(null);
 
     try {
@@ -147,6 +147,7 @@ const App: React.FC = () => {
     if (!file) return;
 
     try {
+      // ---- 1. 추출 ----
       setStatus('analyzing');
       setProgressMessage(`${startPage}~${endPage}페이지 텍스트 추출 중...`);
 
@@ -162,6 +163,7 @@ const App: React.FC = () => {
         return;
       }
 
+      // ---- 2. 번역 ----
       setStatus('translating');
       setProgressMessage(`AI 번역 시작... (예상 토큰: ${tokens.toLocaleString()})`);
 
@@ -173,38 +175,86 @@ const App: React.FC = () => {
       const combinedPrompt = [guidePrompt, promptInstruction].filter(s => s.trim()).join('\n\n');
       const translatedTexts = await translateTexts(originalTexts, onProgress, combinedPrompt, glossary, 20, apiKey, provider, model);
 
+      // ---- 3. 자동 수정 1: 미번역(한글 잔존)·태그 소실 항목 재번역 ----
+      setStatus('fixing');
+      setProgressMessage('번역 결과 검사 중...');
+
+      const needsRetranslation: number[] = [];
+      for (let i = 0; i < translatedTexts.length; i++) {
+        const plain = (translatedTexts[i] ?? '').replace(/<[^>]*>/g, '');
+        const hasKorean = /[가-힣]/.test(plain);
+        const tagLost = !validateTagPreservation([originalTexts[i]], [translatedTexts[i] ?? '']);
+        if (hasKorean || tagLost) needsRetranslation.push(i);
+      }
+
+      let retranslated = 0;
+      if (needsRetranslation.length > 0) {
+        setProgressMessage(`미흡 항목 ${needsRetranslation.length}건 재번역 중...`);
+        try {
+          const subset = needsRetranslation.map(i => originalTexts[i]);
+          const fixedTexts = await translateTexts(subset, undefined, combinedPrompt, glossary, 20, apiKey, provider, model);
+          needsRetranslation.forEach((origIdx, k) => {
+            const fixed = fixedTexts[k];
+            if (!fixed) return;
+            const fixedPlain = fixed.replace(/<[^>]*>/g, '');
+            const wasImproved =
+              (!/[가-힣]/.test(fixedPlain) || /[가-힣]/.test(translatedTexts[origIdx]?.replace(/<[^>]*>/g, '') ?? '')) &&
+              validateTagPreservation([originalTexts[origIdx]], [fixed]);
+            if (wasImproved && fixed !== translatedTexts[origIdx]) {
+              translatedTexts[origIdx] = fixed;
+              retranslated++;
+            }
+          });
+        } catch (retryErr) {
+          console.warn('재번역 실패 — 1차 번역 결과 사용:', retryErr);
+        }
+      }
+
+      // ---- 4. 자동 수정 2: LLM 품질 분석 후 수정 제안 자동 적용 ----
+      setProgressMessage('AI 품질 분석 및 수정사항 적용 중...');
+      let suggestionsApplied = 0;
+      try {
+        const qResponse = await qualityService.verify('local', originalTexts, translatedTexts);
+        if (qResponse?.result?.issues) {
+          for (const issue of qResponse.result.issues) {
+            const idx = issue.index;
+            if (idx === undefined || idx < 0 || idx >= translatedTexts.length) continue;
+            const suggestion = issue.suggestion?.trim();
+            if (!suggestion) continue;
+            // 제안이 색상 태그를 보존하고, 한글을 새로 들여오지 않을 때만 적용
+            const safe = validateTagPreservation([originalTexts[idx]], [suggestion])
+              && !/[가-힣]/.test(suggestion.replace(/<[^>]*>/g, ''));
+            if (safe && suggestion !== translatedTexts[idx]) {
+              translatedTexts[idx] = suggestion;
+              suggestionsApplied++;
+            }
+          }
+        }
+      } catch (qErr) {
+        console.warn('품질 분석 실패 — 건너뜀:', qErr);
+      }
+
+      setFixSummary({ retranslated, suggestionsApplied });
+
+      // ---- 5. 최종 빌드 ----
+      setStatus('building');
+      setProgressMessage('최종 PPTX 파일 생성 중...');
+
       const translatedItems: TextItem[] = textItems.map((item, index) => ({
         ...item,
         text: translatedTexts[index],
         originalLength: originalTexts[index].replace(/<[^>]*>/g, '').length
       }));
-
-      originalTextsRef.current = originalTexts;
-      translatedTextsRef.current = translatedTexts;
-      textItemsRef.current = textItems;
-
-      setStatus('building');
-      setProgressMessage('PPTX 파일 생성 중...');
       const translatedBlob = await replaceTextInPptx(file, translatedItems);
 
+      // ---- 6. 최종 문서 감사 ----
       setStatus('verifying');
-      setProgressMessage('문서 감사 및 AI 품질 분석 진행 중...');
-
-      // 문서 감사 (결정적): 색상 적용·한글 잔존·박스 넘침을 결과물 XML에서 직접 검사
+      setProgressMessage('최종 문서 감사 중...');
       try {
         const audit = await auditDocument(translatedBlob, translatedItems, startPage, endPage);
         setAuditReport(audit);
       } catch (auditErr) {
         console.warn('문서 감사 실패 (번역 결과에는 영향 없음):', auditErr);
-      }
-
-      const [qResponse] = await Promise.all([
-        qualityService.verify('local', originalTexts, translatedTexts),
-        new Promise(resolve => setTimeout(resolve, 1500))
-      ]);
-
-      if (qResponse) {
-        setQualityResult(qResponse.result);
       }
 
       const url = URL.createObjectURL(translatedBlob);
@@ -219,45 +269,6 @@ const App: React.FC = () => {
       setStatus('error');
     }
   }, [file, promptInstruction, glossary, startPage, endPage, apiKey, provider, model, guidePrompt]);
-
-  const handleApplyFixes = async (selectedIndices: number[]) => {
-    if (!file || !qualityResult || selectedIndices.length === 0) return;
-    try {
-      setStatus('building');
-      setProgressMessage('수정사항 적용 중...');
-
-      const newTranslatedTexts = [...translatedTextsRef.current];
-      selectedIndices.forEach(idx => {
-        const issue = qualityResult.issues.find(i => i.index === idx);
-        if (issue && issue.suggestion) newTranslatedTexts[idx] = issue.suggestion;
-      });
-
-      const updatedItems: TextItem[] = textItemsRef.current.map((item, index) => ({
-        ...item,
-        text: newTranslatedTexts[index],
-        originalLength: originalTextsRef.current[index].replace(/<[^>]*>/g, '').length
-      }));
-
-      const newBlob = await replaceTextInPptx(file, updatedItems);
-      const newUrl = URL.createObjectURL(newBlob);
-
-      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-      setDownloadUrl(newUrl);
-      translatedTextsRef.current = newTranslatedTexts;
-      setStatus('done');
-
-      const link = document.createElement('a');
-      link.href = newUrl;
-      link.download = getOutputFilename();
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      console.error(err);
-      setError('수정 중 오류 발생');
-      setStatus('error');
-    }
-  };
 
   const getOutputFilename = () => {
     if (!file) return 'translated.pptx';
@@ -307,7 +318,12 @@ const App: React.FC = () => {
               <div className="mb-6 flex justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
               </div>
-              <h3 className="text-xl font-bold mb-2">{status === 'translating' ? 'AI 번역 진행 중' : '작업 처리 중'}</h3>
+              <h3 className="text-xl font-bold mb-2">
+                {status === 'translating' ? 'AI 번역 진행 중'
+                  : status === 'fixing' ? '품질 검사 및 자동 수정 중'
+                    : status === 'verifying' ? '최종 문서 감사 중'
+                      : '작업 처리 중'}
+              </h3>
               <p className="text-slate-500">{progressMessage}</p>
             </div>
           )}
@@ -331,7 +347,14 @@ const App: React.FC = () => {
                   <DownloadIcon />
                 </div>
                 <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white">번역이 완료되었습니다!</h2>
-                <p className="text-slate-500 mb-8">성공적으로 번역된 파일을 아래 버튼을 눌러 다운로드하세요.</p>
+                <p className="text-slate-500 mb-2">감사·품질 분석·자동 수정을 거친 최종본입니다.</p>
+                {fixSummary && (fixSummary.retranslated > 0 || fixSummary.suggestionsApplied > 0) ? (
+                  <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 inline-block mb-6">
+                    자동 수정 적용: 재번역 {fixSummary.retranslated}건 · 표현 개선 {fixSummary.suggestionsApplied}건
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400 mb-6">자동 수정이 필요한 항목이 없었습니다.</p>
+                )}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <a
                     href={downloadUrl}
@@ -351,14 +374,6 @@ const App: React.FC = () => {
               </div>
 
               {auditReport && <AuditReportCard report={auditReport} />}
-
-              {qualityResult && (
-                <QualityReport
-                  result={qualityResult}
-                  onApplyFixes={handleApplyFixes}
-                  onDownloadOriginal={() => { }}
-                />
-              )}
             </div>
           )}
 
