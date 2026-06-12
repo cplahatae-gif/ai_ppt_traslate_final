@@ -25,6 +25,7 @@ Translate an array of Korean text fragments into professional English while STRI
     - **TAG REORDERING**: If the word order changes during translation, you **MUST** move the tag to wrap the translated word in its *new* position.
     - **Example**: '<color:0000FF>사과</color>를 좋아해' -> 'I like <color:0000FF>apples</color>' (Tag moved to end).
     - If the original text has NO tags, the translation MUST have NO tags.
+    - **NEVER invent a color tag.** Do NOT colorize warnings, notes, or emphasis (※, ①, ②...) unless the source item already has that exact color tag.
     - If the original has <b>only part</b> bolded, keep ONLY that part bolded.
     - **CRITICAL: Do NOT add <br> or newline characters unless they exist in the original text.**
     - Do NOT split single sentences into multiple lines.
@@ -58,19 +59,53 @@ export const extractColorTokens = (text: string): string[] =>
 
 /**
  * 번역 결과가 원본의 색상 태그를 보존했는지 검사합니다.
- * 같은 색 조각이 병합될 수 있으므로 개수가 아닌 "고유 토큰 집합"으로 비교합니다.
- * (색상 토큰 소실 = 글자색 깨짐으로 직결되는 치명적 결함)
+ * 같은 색 조각이 병합될 수 있으므로 개수가 아닌 "고유 토큰 집합"으로 비교하되,
+ * 소실(원본 색 누락)과 무단 추가(LLM이 발명한 색) 모두 실패 처리합니다.
  */
 export const validateTagPreservation = (originals: string[], translations: string[]): boolean => {
     if (originals.length !== translations.length) return false;
     for (let i = 0; i < originals.length; i++) {
         const origSet = new Set(extractColorTokens(originals[i]));
         const transSet = new Set(extractColorTokens(translations[i] ?? ''));
+        if (origSet.size !== transSet.size) return false;
         for (const token of origSet) {
             if (!transSet.has(token)) return false;
         }
     }
     return true;
+};
+
+/**
+ * 색상 태그를 결정적으로 복원합니다. (재번역으로도 못 고친 경우의 최종 방어선)
+ * - 원본에 색이 없으면: 번역의 모든 색 태그 제거 (LLM이 발명한 색 차단)
+ * - 원본 문단 전체가 단일 색이면: 번역 전체를 그 색으로 재래핑
+ * - 다색 문단이면: 원본에 없는 색 태그만 제거 (위치는 LLM 결과 존중)
+ */
+export const repairColorTags = (original: string, translated: string): string => {
+    const origTokens = [...new Set(extractColorTokens(original))];
+    const transTokens = [...new Set(extractColorTokens(translated))];
+    const sameSet = origTokens.length === transTokens.length
+        && origTokens.every(t => transTokens.includes(t));
+    if (sameSet) return translated;
+
+    const stripAllColors = (s: string) => s.replace(/<\/?color[^>]*>/gi, '');
+
+    if (origTokens.length === 0) {
+        return stripAllColors(translated);
+    }
+
+    // 원본에서 색 래퍼 밖에 실제 텍스트가 없으면 = 문단 전체가 색칠된 상태
+    const outsideColor = original
+        .replace(/<color:[^>]+>[\s\S]*?<\/color>/gi, '')
+        .replace(/<[^>]*>/g, '')
+        .trim();
+    if (origTokens.length === 1 && outsideColor === '') {
+        return `<color:${origTokens[0]}>${stripAllColors(translated)}</color>`;
+    }
+
+    // 다색/부분색: 원본에 없는 색의 여는 태그만 제거 (짝 잃은 닫는 태그는 무해)
+    return translated.replace(/<color:([^>]+)>/gi, (m, tok) =>
+        origTokens.includes(tok.trim().toLowerCase()) ? m : '');
 };
 
 export const categorizeError = (error: unknown): Error => {
