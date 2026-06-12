@@ -1,13 +1,54 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import JSZip from 'jszip';
 
 interface FilePreviewCardProps {
     file: File;
     slideCount?: number | null;
 }
 
+const THUMBNAIL_PATHS = [
+    'docProps/thumbnail.jpeg',
+    'docProps/thumbnail.jpg',
+    'docProps/thumbnail.png',
+    'ppt/media/thumbnail.jpeg',
+    'ppt/media/thumbnail.jpg',
+];
+
+async function extractThumbnail(file: File): Promise<string | null> {
+    try {
+        const zip = await JSZip.loadAsync(file);
+        for (const path of THUMBNAIL_PATHS) {
+            const entry = zip.file(path);
+            if (entry) {
+                const blob = await entry.async('blob');
+                return URL.createObjectURL(blob);
+            }
+        }
+    } catch {
+        // ZIP 파싱 실패 시 무시
+    }
+    return null;
+}
+
 export const FilePreviewCard: React.FC<FilePreviewCardProps> = ({ file, slideCount }) => {
     const formattedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
     const uploadDate = new Date().toLocaleString();
+    const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+    const [thumbLoading, setThumbLoading] = useState(true);
+
+    useEffect(() => {
+        let objectUrl: string | null = null;
+        setThumbLoading(true);
+        setThumbnailUrl(null);
+        extractThumbnail(file).then(url => {
+            objectUrl = url;
+            setThumbnailUrl(url);
+            setThumbLoading(false);
+        });
+        return () => {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [file]);
 
     return (
         <aside className="w-full lg:w-[400px] flex flex-col gap-6 animate-scale-in">
@@ -19,13 +60,22 @@ export const FilePreviewCard: React.FC<FilePreviewCardProps> = ({ file, slideCou
                     </span>
                 </div>
                 <div className="p-6">
-                    {/* Placeholder Thumbnail */}
-                    <div className="aspect-[4/3] w-full bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mb-6 relative group overflow-hidden border border-slate-200 dark:border-slate-700">
-                        <div className="absolute inset-0 bg-gradient-to-br from-slate-500/5 to-transparent"></div>
-                        <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600">present_to_all</span>
-                        <div className="absolute bottom-4 left-4 right-4 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <div className="bg-primary h-full w-full animate-pulse"></div>
-                        </div>
+                    {/* Thumbnail */}
+                    <div className="aspect-[4/3] w-full bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mb-6 relative overflow-hidden border border-slate-200 dark:border-slate-700">
+                        {thumbLoading ? (
+                            <span className="material-symbols-outlined text-5xl text-slate-300 animate-pulse">hourglass_top</span>
+                        ) : thumbnailUrl ? (
+                            <img
+                                src={thumbnailUrl}
+                                alt="슬라이드 미리보기"
+                                className="w-full h-full object-contain"
+                            />
+                        ) : (
+                            <>
+                                <div className="absolute inset-0 bg-gradient-to-br from-slate-500/5 to-transparent"></div>
+                                <span className="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600">present_to_all</span>
+                            </>
+                        )}
                     </div>
 
                     {/* Metadata Grid */}
