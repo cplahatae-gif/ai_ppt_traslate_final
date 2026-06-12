@@ -20,6 +20,34 @@ export const countSlides = async (file: File): Promise<number> => {
 };
 
 /**
+ * rPr의 직계 자식 solidFill에서 색상 토큰을 추출합니다.
+ * - srgbClr: "0000FF" (hex 6자리)
+ * - schemeClr: "tx1", "bg1" 등. lumMod/lumOff 변형은 "tx1.lm50000.lo35000" 형태로 인코딩
+ * - a:ln(외곽선) 내부의 solidFill은 무시 (직계 자식만)
+ */
+const extractColorToken = (rPr: Element | undefined): string => {
+    if (!rPr) return '';
+    const fills = Array.from(rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill'));
+    const solidFill = fills.find(f => f.parentNode === rPr);
+    if (!solidFill) return '';
+
+    const srgbClr = solidFill.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'srgbClr')[0];
+    if (srgbClr) return srgbClr.getAttribute('val') || '';
+
+    const schemeClr = solidFill.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'schemeClr')[0];
+    if (schemeClr) {
+        let token = schemeClr.getAttribute('val') || '';
+        if (!token) return '';
+        const lumMod = schemeClr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'lumMod')[0];
+        const lumOff = schemeClr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'lumOff')[0];
+        if (lumMod?.getAttribute('val')) token += `.lm${lumMod.getAttribute('val')}`;
+        if (lumOff?.getAttribute('val')) token += `.lo${lumOff.getAttribute('val')}`;
+        return token;
+    }
+    return '';
+};
+
+/**
  * PPTX 파일에서 텍스트를 추출합니다. (스타일 태그 보존)
  * @param file PPTX 파일
  * @param startSlide 시작 슬라이드 번호 (1부터)
@@ -99,7 +127,6 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
 
             const tagRun = (run: RunStyle) => {
                 let chunk = run.text;
-                // highlight 기능 제거됨
                 if (run.color) chunk = `<color:${run.color}>${chunk}</color>`;
                 if (run.u) chunk = `<u>${chunk}</u>`;
                 if (run.i) chunk = `<i>${chunk}</i>`;
@@ -121,17 +148,8 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
                     const i = rPr?.getAttribute('i') === '1';
                     const u = rPr?.getAttribute('u') === 'sng';
 
-                    // 색상 추출 (solidFill > srgbClr)
-                    let color = '';
-                    const solidFill = rPr?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill')[0];
-                    if (solidFill) {
-                        const srgbClr = solidFill.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'srgbClr')[0];
-                        if (srgbClr) {
-                            color = srgbClr.getAttribute('val') || '';
-                        }
-                    }
-
-                    // highlight(배경색) 기능 제거됨 - 추출하지 않음
+                    // 색상 추출 (srgbClr hex + schemeClr 테마색/lumMod 변형)
+                    const color = extractColorToken(rPr);
 
                     runBuffer.push({ text, b, i, u, color });
 
@@ -159,155 +177,293 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
     return allTextItems;
 };
 
+// ============================================================
+// 태그 토크나이저 (재조립용)
+// ============================================================
+// DOMParser(text/html) 대신 직접 토크나이즈하는 이유:
+// 1. <color:0000FF>...</color> 는 HTML 파서에서 여는/닫는 태그 이름이 달라
+//    닫는 태그가 무시되고 이후 텍스트까지 색이 전염되는 버그가 있었음
+// 2. <color:tx1.lm50000> 같은 scheme 토큰은 HTML 태그 이름으로 안전하지 않음
+
+const ENTITY_MAP: Record<string, string> = {
+    '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&nbsp;': ' ',
+};
+const decodeEntities = (s: string): string =>
+    s.replace(/&(?:amp|lt|gt|quot|#39|nbsp);/g, m => ENTITY_MAP[m] ?? m);
+
+interface StyleFrame {
+    tag: 'b' | 'i' | 'u' | 'color';
+    color?: string;
+}
+
 /**
- * 태그가 포함된 텍스트를 파싱하여 PPTX XML 노드(a:r)로 변환합니다.
- * DOMParser를 사용하여 중첩된 태그나 불완전한 HTML도 견고하게 처리합니다.
- * @param xmlDoc XML Document
- * @param text 번역된 텍스트 (HTML 태그 포함)
- * @param defaultProps 원본 스타일 속성
- * @param originalLength 원본 텍스트 길이 (동적 폰트 스케일링용)
+ * 색상 토큰을 rPr에 solidFill로 적용합니다.
+ * - 6자리 hex → srgbClr
+ * - 그 외 → schemeClr (".lmNNN"/".loNNN" 접미사는 lumMod/lumOff로 복원)
  */
-const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?: Element, originalLength?: number): Node[] => {
-    const parser = new DOMParser();
-    // HTML 파서를 사용하여 텍스트를 DOM 트리로 변환 (wrapper로 감싸서 처리)
-    // <span> wrapper ensures a valid root for fragments
-    const doc = parser.parseFromString(`<span>${text}</span>`, 'text/html');
-    const root = doc.body.firstChild;
+const applyColorToken = (xmlDoc: Document, rPr: Element, token: string): void => {
+    // 기존 직계 solidFill 제거
+    Array.from(rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill'))
+        .filter(f => f.parentNode === rPr)
+        .forEach(f => rPr.removeChild(f));
 
-    const nodes: Node[] = [];
+    if (!token) return;
 
-    // 번역된 텍스트 길이 (태그 제외)
-    const translatedLength = text.replace(/<[^>]*>/g, '').length;
+    const solidFill = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:solidFill');
 
-    // 동적 스케일 팩터 계산
-    let scaleFactor = 1.0;
-    // 텍스트가 50자 미만(제목 등)이면 스케일링 하지 않음
-    if (originalLength && originalLength > 50 && translatedLength > originalLength * 1.2) {
-        const ratio = originalLength / translatedLength;
-        // 최소 0.85 (85%)까지만 축소 (너무 작아지는 것 방지)
-        scaleFactor = Math.max(0.85, Math.min(1.0, ratio));
+    if (/^[0-9a-fA-F]{6}$/.test(token)) {
+        const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
+        srgbClr.setAttribute('val', token.toUpperCase());
+        solidFill.appendChild(srgbClr);
+    } else {
+        const parts = token.split('.');
+        const name = parts[0].toLowerCase();
+        // 유효한 scheme 이름만 허용 (LLM이 토큰을 변형한 경우 색 적용 생략)
+        if (!/^(bg1|bg2|tx1|tx2|dk1|dk2|lt1|lt2|accent[1-6]|hlink|folHlink|phClr)$/.test(name)) return;
+        const schemeClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:schemeClr');
+        schemeClr.setAttribute('val', name);
+        for (const mod of parts.slice(1)) {
+            const m = mod.match(/^(lm|lo)(\d+)$/);
+            if (!m) continue;
+            const el = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, m[1] === 'lm' ? 'a:lumMod' : 'a:lumOff');
+            el.setAttribute('val', m[2]);
+            schemeClr.appendChild(el);
+        }
+        solidFill.appendChild(schemeClr);
     }
 
-    // 재귀적으로 DOM 트리를 순회하며 스타일 적용
-    const traverse = (node: Node, styles: { b: boolean, i: boolean, u: boolean, color: string }) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-            const content = node.textContent || '';
-            if (!content) return;
+    // OOXML 스키마 순서상 fill은 폰트 정의(latin 등)보다 앞에 와야 함
+    if (rPr.firstChild) {
+        rPr.insertBefore(solidFill, rPr.firstChild);
+    } else {
+        rPr.appendChild(solidFill);
+    }
+};
 
-            // 텍스트 노드 생성
-            const rNode = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:r");
+/**
+ * 태그가 포함된 텍스트를 파싱하여 PPTX XML 노드(a:r)로 변환합니다.
+ * @param xmlDoc XML Document
+ * @param text 번역된 텍스트 (태그 포함)
+ * @param defaultProps 원본 스타일 속성 (대표 rPr 클론)
+ * @param szScale 명시 폰트 크기(sz)에 곱할 축소 비율 (표 셀 등 normAutofit이 안 통하는 곳용)
+ */
+const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?: Element, szScale: number = 1.0): Node[] => {
+    const nodes: Node[] = [];
+    const stack: StyleFrame[] = [];
 
-            // 속성 노드 (rPr) 준비
-            let rPr: Element;
+    const currentStyles = () => ({
+        b: stack.some(f => f.tag === 'b'),
+        i: stack.some(f => f.tag === 'i'),
+        u: stack.some(f => f.tag === 'u'),
+        color: [...stack].reverse().find(f => f.tag === 'color')?.color || '',
+    });
 
-            if (defaultProps) {
-                rPr = defaultProps.cloneNode(true) as Element;
-
-                // DYNAMIC FONT SCALING
-                const currentSize = parseInt(rPr.getAttribute('sz') || '0');
-                if (currentSize > 0) {
-                    const newSize = Math.floor(currentSize * scaleFactor);
-                    rPr.setAttribute('sz', String(Math.max(newSize, 800)));
-                }
-
-                // 영문 번역 시 자간 설정이 좁으면 글자가 겹침 — 무조건 표준으로 리셋
-                rPr.removeAttribute('spc');
-            } else {
-                rPr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:rPr");
-            }
-
-            // Apply styles based strictly on tags (override defaultProps)
-            if (styles.b) {
-                rPr.setAttribute('b', '1');
-            } else {
-                rPr.removeAttribute('b');
-            }
-
-            if (styles.i) {
-                rPr.setAttribute('i', '1');
-            } else {
-                rPr.removeAttribute('i');
-            }
-
-            // Underline 적용
-            if (styles.u) {
-                rPr.setAttribute('u', 'sng');
-            } else {
-                rPr.removeAttribute('u');
-            }
-
-            // Helper to insert correctly in rPr order (Prepend Strategy)
-            const insertInRPr = (newChild: Node) => {
-                // We PREPEND to ensure styles come before font definitions (latin, ea, etc.)
-                // OOXML Schema requires: solidFill, highlight, fonts.
-                if (rPr.firstChild) {
-                    rPr.insertBefore(newChild, rPr.firstChild);
-                } else {
-                    rPr.appendChild(newChild);
-                }
-            };
-
-            // Highlight(배경색) 기능 제거됨
-
-            // Color 적용 (solidFill > srgbClr)
-            // 기존 solidFill 제거 후 새로 생성
-            const existingSolidFill = rPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'solidFill')[0];
-            if (existingSolidFill && existingSolidFill.parentNode === rPr) {
-                rPr.removeChild(existingSolidFill);
-            }
-            if (styles.color) {
-                const solidFill = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:solidFill');
-                const srgbClr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:srgbClr');
-                srgbClr.setAttribute('val', styles.color);
-                solidFill.appendChild(srgbClr);
-                insertInRPr(solidFill);
-            }
-
-            rPr.setAttribute('lang', 'en-US');
-            rPr.setAttribute('dirty', '0');
-
-            rNode.appendChild(rPr);
-
-            const tNode = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:t");
-            tNode.textContent = content;
-            rNode.appendChild(tNode);
-
-            nodes.push(rNode);
-
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-            const el = node as Element;
-            const tagName = el.tagName.toLowerCase();
-
-            if (tagName === 'br') {
-                // 줄바꿈 (<a:br>) 생성
-                const brNode = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:br");
-                nodes.push(brNode);
+    const popLast = (tag: StyleFrame['tag']) => {
+        for (let k = stack.length - 1; k >= 0; k--) {
+            if (stack[k].tag === tag) {
+                stack.splice(k, 1);
                 return;
             }
-
-            const newStyles = { ...styles };
-
-            if (tagName === 'b' || tagName === 'strong') newStyles.b = true;
-            if (tagName === 'i' || tagName === 'em') newStyles.i = true;
-            if (tagName === 'u') newStyles.u = true;
-
-            // <color:RRGGBB> 태그 처리
-            if (tagName.startsWith('color:')) {
-                newStyles.color = tagName.substring(6).toUpperCase();
-            }
-
-            // <highlight:RRGGBB> 태그 기능 제거됨
-
-            // 자식 노드 순회
-            node.childNodes.forEach(child => traverse(child, newStyles));
         }
     };
 
-    if (root) {
-        root.childNodes.forEach(child => traverse(child, { b: false, i: false, u: false, color: '' }));
+    const emitText = (raw: string) => {
+        if (!raw) return;
+        const content = decodeEntities(raw);
+        const styles = currentStyles();
+
+        const rNode = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:r");
+        let rPr: Element;
+
+        if (defaultProps) {
+            rPr = defaultProps.cloneNode(true) as Element;
+
+            // 표 셀 등: 명시 sz 직접 축소
+            const currentSize = parseInt(rPr.getAttribute('sz') || '0');
+            if (currentSize > 0 && szScale < 1.0) {
+                const newSize = Math.floor(currentSize * szScale);
+                rPr.setAttribute('sz', String(Math.max(newSize, 800)));
+            }
+
+            // 영문 번역 시 자간 설정이 좁으면 글자가 겹침 — 무조건 표준으로 리셋
+            rPr.removeAttribute('spc');
+        } else {
+            rPr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:rPr");
+        }
+
+        // 태그 기반 스타일 적용. 명시적 "0"(비굵게 등)은 보존해야
+        // 마스터/레이아웃에서 굵게가 상속되는 경우를 막을 수 있음
+        if (styles.b) {
+            rPr.setAttribute('b', '1');
+        } else if (rPr.getAttribute('b') === '1') {
+            rPr.removeAttribute('b');
+        }
+
+        if (styles.i) {
+            rPr.setAttribute('i', '1');
+        } else if (rPr.getAttribute('i') === '1') {
+            rPr.removeAttribute('i');
+        }
+
+        if (styles.u) {
+            rPr.setAttribute('u', 'sng');
+        } else if (rPr.getAttribute('u')) {
+            rPr.removeAttribute('u');
+        }
+
+        applyColorToken(xmlDoc, rPr, styles.color);
+
+        rPr.setAttribute('lang', 'en-US');
+        rPr.setAttribute('dirty', '0');
+
+        rNode.appendChild(rPr);
+
+        const tNode = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:t");
+        tNode.textContent = content;
+        rNode.appendChild(tNode);
+
+        nodes.push(rNode);
+    };
+
+    const tagRe = /<[^<>]+>/g;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = tagRe.exec(text)) !== null) {
+        emitText(text.slice(last, m.index));
+        last = tagRe.lastIndex;
+
+        const tag = m[0].toLowerCase().replace(/\s+/g, '');
+        if (tag === '<br>' || tag === '<br/>') {
+            nodes.push(xmlDoc.createElementNS(DRAWINGML_NAMESPACE, "a:br"));
+        } else if (tag === '<b>' || tag === '<strong>') {
+            stack.push({ tag: 'b' });
+        } else if (tag === '<i>' || tag === '<em>') {
+            stack.push({ tag: 'i' });
+        } else if (tag === '<u>') {
+            stack.push({ tag: 'u' });
+        } else if (tag.startsWith('<color:')) {
+            stack.push({ tag: 'color', color: m[0].slice(7, -1).trim() });
+        } else if (tag === '</b>' || tag === '</strong>') {
+            popLast('b');
+        } else if (tag === '</i>' || tag === '</em>') {
+            popLast('i');
+        } else if (tag === '</u>') {
+            popLast('u');
+        } else if (tag.startsWith('</color')) {
+            popLast('color');
+        }
+        // 그 외 알 수 없는 태그는 무시 (LLM 노이즈 방어)
     }
+    emitText(text.slice(last));
 
     return nodes;
+};
+
+// ============================================================
+// 오버플로우 축소 (텍스트박스 용량 기반)
+// ============================================================
+
+const EMU_PER_PT = 12700;
+// 기본 텍스트박스 내부 여백 (lIns/rIns 91440 EMU = 7.2pt, tIns/bIns 45720 EMU = 3.6pt)
+const INSET_X_PT = 14.4;
+const INSET_Y_PT = 7.2;
+// 영문 평균 글자폭/줄높이 휴리스틱 (폰트 pt 대비)
+const CHAR_WIDTH_RATIO = 0.52;
+const LINE_HEIGHT_RATIO = 1.22;
+
+const stripTags = (s: string): string => s.replace(/<[^>]*>/g, '');
+
+const findAncestorByLocalName = (node: Element, localName: string): Element | null => {
+    let cur: Element | null = node.parentElement;
+    while (cur) {
+        if (cur.localName === localName || cur.tagName.endsWith(`:${localName}`)) return cur;
+        cur = cur.parentElement;
+    }
+    return null;
+};
+
+/** 도형(p:sp)의 spPr > xfrm > ext에서 크기(EMU)를 읽습니다. */
+const getShapeExtent = (txBody: Element): { cx: number; cy: number } | null => {
+    const sp = txBody.parentElement;
+    if (!sp) return null;
+    const spPr = Array.from(sp.children).find(c => c.localName === 'spPr' || c.tagName.endsWith(':spPr'));
+    if (!spPr) return null;
+    const xfrm = spPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'xfrm')[0];
+    if (!xfrm) return null;
+    const ext = xfrm.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'ext')[0];
+    if (!ext) return null;
+    const cx = parseInt(ext.getAttribute('cx') || '0');
+    const cy = parseInt(ext.getAttribute('cy') || '0');
+    if (cx <= 0 || cy <= 0) return null;
+    return { cx, cy };
+};
+
+/** 문단들에서 명시된 최대 폰트 크기(sz, 1/100pt)를 찾습니다. */
+const getMaxFontSize = (pNodes: Element[]): number | null => {
+    let max = 0;
+    for (const pNode of pNodes) {
+        for (const rPr of Array.from(pNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr'))) {
+            const sz = parseInt(rPr.getAttribute('sz') || '0');
+            if (sz > max) max = sz;
+        }
+    }
+    return max > 0 ? max : null;
+};
+
+interface BodyPlan {
+    /** 도형: normAutofit fontScale로 적용 (100000 = 100%) */
+    fontScale: number;
+    /** 표 셀: run 명시 sz에 곱하는 비율 */
+    szScale: number;
+    /** 확장 비율 (번역/원본 글자수) */
+    ratio: number;
+}
+
+/**
+ * txBody 단위로 축소 계획을 세웁니다.
+ * - 도형 + 크기 정보 있음: 박스 용량(글자수) 추정 → 넘칠 때만 √(용량/글자수)로 축소
+ * - 도형 + 크기 정보 없음: 확장비 기반 보수적 축소
+ * - 표 셀: normAutofit이 무시되므로 run sz 직접 축소 (행 높이는 자동 증가하므로 √ 완화)
+ */
+const planBodyScaling = (
+    isTableCell: boolean,
+    totalOrig: number,
+    totalTrans: number,
+    extent: { cx: number; cy: number } | null,
+    maxSz: number | null,
+): BodyPlan => {
+    const ratio = totalOrig > 0 ? totalTrans / totalOrig : 1.0;
+    const plan: BodyPlan = { fontScale: 100000, szScale: 1.0, ratio };
+
+    if (ratio <= 1.15 || totalTrans < 4) return plan;
+
+    if (isTableCell) {
+        // 행 높이가 자동으로 늘어나므로 √로 완만하게, 최저 0.7 (가독성)
+        plan.szScale = Math.max(0.7, Math.min(1.0, Math.sqrt(1 / ratio)));
+        return plan;
+    }
+
+    if (extent && maxSz) {
+        const fontPt = maxSz / 100;
+        const usableW = extent.cx / EMU_PER_PT - INSET_X_PT;
+        const usableH = extent.cy / EMU_PER_PT - INSET_Y_PT;
+        if (usableW > 0 && usableH > 0) {
+            const charsPerLine = Math.floor(usableW / (CHAR_WIDTH_RATIO * fontPt));
+            const lines = Math.max(1, Math.floor(usableH / (LINE_HEIGHT_RATIO * fontPt)));
+            const capacity = Math.max(1, charsPerLine * lines);
+            if (totalTrans > capacity) {
+                // 폰트를 s배 하면 수용량은 1/s² → s = √(용량/글자수)
+                const s = Math.max(0.6, Math.min(1.0, Math.sqrt(capacity / totalTrans)));
+                plan.fontScale = Math.round(s * 100000);
+            }
+            return plan; // 용량 내에 들어가면 축소하지 않음 (넓은 박스 보호)
+        }
+    }
+
+    // 크기 정보를 못 얻은 경우: 확장비 기반 폴백
+    const s = Math.max(0.7, Math.min(1.0, 1 / ratio));
+    plan.fontScale = Math.round(s * 100000);
+    return plan;
 };
 
 /**
@@ -326,6 +482,30 @@ const adjustLineSpacing = (pNode: Element): void => {
         spcPct.setAttribute('val', '120000'); // 1.5 → 1.2
     } else if (val >= 120000) {
         spcPct.setAttribute('val', '100000'); // 1.2 → 1.0
+    }
+};
+
+/** txBody의 bodyPr에 normAutofit fontScale을 기록합니다. (spAutoFit이면 도형이 자라므로 생략) */
+const applyAutofit = (xmlDoc: Document, txBody: Element, fontScale: number): void => {
+    const bodyPr = txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'bodyPr')[0];
+    if (!bodyPr) return;
+
+    const spAutoFit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spAutoFit')[0];
+    if (spAutoFit) return;
+
+    const noAutofit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'noAutofit')[0];
+    if (noAutofit) bodyPr.removeChild(noAutofit);
+
+    const lnSpcReduction = fontScale < 80000 ? '10000' : '0';
+    const existing = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'normAutofit')[0];
+    if (existing) {
+        existing.setAttribute('fontScale', String(fontScale));
+        existing.setAttribute('lnSpcReduction', lnSpcReduction);
+    } else {
+        const normAutofit = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:normAutofit');
+        normAutofit.setAttribute('fontScale', String(fontScale));
+        normAutofit.setAttribute('lnSpcReduction', lnSpcReduction);
+        bodyPr.appendChild(normAutofit);
     }
 };
 
@@ -351,76 +531,70 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
 
         const paragraphNodes = xmlDoc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p');
 
-        // Pre-compute per-txBody max expansion ratio for fontScale
-        const txBodyScales = new Map<Element, number>();
-        for (const item of itemsBySlide[slidePath]) {
-            const pn = paragraphNodes[item.paragraphIndex];
-            if (!pn || !item.originalLength || item.originalLength <= 30) continue;
-            const rawLen = item.text.replace(/<[^>]*>/g, '').length;
-            const ratio = rawLen / item.originalLength;
-            let par: Element | null = pn.parentElement;
-            while (par) {
-                if (par.tagName.endsWith('txBody')) {
-                    const cur = txBodyScales.get(par) ?? 1.0;
-                    if (ratio > cur) txBodyScales.set(par, ratio);
-                    break;
-                }
-                par = par.parentElement;
-            }
+        // ---- 1단계: txBody 단위로 항목을 묶어 확장량 집계 ----
+        interface BodyGroup {
+            txBody: Element;
+            isTableCell: boolean;
+            pNodes: Element[];
+            totalOrig: number;
+            totalTrans: number;
         }
+        const groups = new Map<Element, BodyGroup>();
+        const itemBody = new Map<TextItem, BodyGroup>();
 
         for (const item of itemsBySlide[slidePath]) {
             const pNode = paragraphNodes[item.paragraphIndex];
+            if (!pNode) continue;
+            const txBody = findAncestorByLocalName(pNode, 'txBody');
+            if (!txBody) continue;
 
+            let group = groups.get(txBody);
+            if (!group) {
+                group = {
+                    txBody,
+                    isTableCell: findAncestorByLocalName(txBody, 'tc') !== null,
+                    pNodes: [],
+                    totalOrig: 0,
+                    totalTrans: 0,
+                };
+                groups.set(txBody, group);
+            }
+            group.pNodes.push(pNode);
+            const transLen = stripTags(item.text).length;
+            group.totalTrans += transLen;
+            group.totalOrig += item.originalLength ?? transLen;
+            itemBody.set(item, group);
+        }
+
+        // ---- 2단계: txBody별 축소 계획 수립 ----
+        const plans = new Map<Element, BodyPlan>();
+        for (const group of groups.values()) {
+            const extent = group.isTableCell ? null : getShapeExtent(group.txBody);
+            const maxSz = getMaxFontSize(group.pNodes);
+            plans.set(group.txBody, planBodyScaling(
+                group.isTableCell, group.totalOrig, group.totalTrans, extent, maxSz,
+            ));
+        }
+
+        // ---- 3단계: 문단 치환 ----
+        for (const item of itemsBySlide[slidePath]) {
+            const pNode = paragraphNodes[item.paragraphIndex];
             if (!pNode) continue;
 
-            adjustLineSpacing(pNode); // P3 Fix: 줄간격 한 단계 다운
+            const group = itemBody.get(item);
+            const plan = group ? plans.get(group.txBody) : undefined;
 
-            // 텍스트 상자 자동 맞춤 (normAutofit + fontScale 명시)
-            let parent = pNode.parentElement;
-            while (parent) {
-                if (parent.tagName.endsWith('txBody')) {
-                    const bodyPr = parent.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'bodyPr')[0];
-                    if (bodyPr) {
-                        const noAutofit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'noAutofit')[0];
-                        if (noAutofit) bodyPr.removeChild(noAutofit);
-
-                        const existingSpAuto = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spAutoFit')[0];
-                        if (!existingSpAuto) {
-                            // fontScale: 1/expansionRatio * 100000, clamped [65000, 100000]
-                            const expansionRatio = txBodyScales.get(parent) ?? 1.0;
-                            const fontScaleVal = expansionRatio > 1.05
-                                ? Math.round(Math.max(65000, Math.min(100000, (1 / expansionRatio) * 100000)))
-                                : 100000;
-                            const existingNorm = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'normAutofit')[0];
-                            if (existingNorm) {
-                                existingNorm.setAttribute('fontScale', String(fontScaleVal));
-                                existingNorm.setAttribute('lnSpcReduction', '0');
-                            } else {
-                                const normAutofit = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:normAutofit');
-                                normAutofit.setAttribute('fontScale', String(fontScaleVal));
-                                normAutofit.setAttribute('lnSpcReduction', '0');
-                                bodyPr.appendChild(normAutofit);
-                            }
-                        }
-                    }
-                    break;
-                }
-                parent = parent.parentElement;
+            // 줄간격 축소는 실제로 확장된 경우에만
+            if (plan && plan.ratio > 1.2) {
+                adjustLineSpacing(pNode);
             }
 
-            // 기존 Run 및 Break 모두 제거
-            // r 뿐만 아니라 br도 제거해야 함 (pNode의 자식 중 r와 br을 모두 삭제)
-            // 간단하게: endParaRPr 전까지 모든 자식을 지우고 다시 채움?
-            // 아니면 r와 br만 찾아서 지움.
-            // 안전하게: r과 br 태그만 찾아서 삭제
+            // 기존 Run 및 Break 모두 제거 준비
             const children = Array.from(pNode.childNodes);
             const targetNodes = children.filter(n => n.nodeName === 'a:r' || n.nodeName === 'a:br');
 
-            // 대표 스타일(Representative RPr) 찾기: 공백이 아닌 실제 텍스트가 있는 첫 번째 Run의 스타일 사용
-            // 이렇게 해야 "앞의 투명/색깔 불릿" 스타일이 전체를 덮어쓰는 문제 해결 가능
+            // 대표 스타일(Representative RPr): 공백이 아닌 실제 텍스트가 있는 첫 Run의 스타일
             let representativeRPr: Element | undefined;
-
             const runNodes = Array.from(pNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'r'));
             for (const r of runNodes) {
                 const text = r.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 't')[0]?.textContent || '';
@@ -429,31 +603,29 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
                     break;
                 }
             }
-            // 텍스트 있는 Run이 없으면 그냥 첫 번째 사용
             if (!representativeRPr) {
                 representativeRPr = runNodes[0]?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr')[0];
             }
 
-            // 스타일 클론
             const defaultProps = representativeRPr ? representativeRPr.cloneNode(true) as Element : undefined;
 
-            // P1 Fix: 색상 전염 방지 — cloneNode 후 모든 fill 노드 제거
-            // 색상은 createRunsFromTaggedText에서 <color:> 태그 있을 때만 개별 run에 부여
+            // 색상 전염 방지: 대표 스타일의 fill 제거.
+            // 색상은 <color:> 태그가 있을 때만 run별로 부여 (scheme 색상도 태그로 보존되므로 안전)
             if (defaultProps) {
                 ['solidFill', 'gradFill', 'pattFill', 'blipFill', 'noFill'].forEach(fillType => {
                     Array.from(defaultProps.getElementsByTagNameNS(DRAWINGML_NAMESPACE, fillType))
-                        .forEach(node => node.parentNode?.removeChild(node));
+                        .filter(node => node.parentNode === defaultProps)
+                        .forEach(node => defaultProps.removeChild(node));
                 });
             }
 
             targetNodes.forEach(n => pNode.removeChild(n));
 
-            // 새로운 Run 생성 및 삽입 (원본 길이 전달하여 동적 스케일링)
-            const newNodes = createRunsFromTaggedText(xmlDoc, item.text, defaultProps, item.originalLength);
+            // 표 셀이면 run sz 직접 축소, 도형이면 normAutofit으로 처리하므로 1.0
+            const szScale = group?.isTableCell ? (plan?.szScale ?? 1.0) : 1.0;
+            const newNodes = createRunsFromTaggedText(xmlDoc, item.text, defaultProps, szScale);
 
-            // endParaRPr (문단 끝 속성) 앞에 삽입하거나 append
             const endParaRunPr = pNode.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'endParaRPr')[0];
-
             newNodes.forEach(node => {
                 if (endParaRunPr) {
                     pNode.insertBefore(node, endParaRunPr);
@@ -461,6 +633,15 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
                     pNode.appendChild(node);
                 }
             });
+        }
+
+        // ---- 4단계: 도형 txBody에 normAutofit 적용 ----
+        for (const group of groups.values()) {
+            const plan = plans.get(group.txBody);
+            if (!plan || group.isTableCell) continue;
+            if (plan.fontScale < 100000) {
+                applyAutofit(xmlDoc, group.txBody, plan.fontScale);
+            }
         }
 
         const newXmlString = serializer.serializeToString(xmlDoc);

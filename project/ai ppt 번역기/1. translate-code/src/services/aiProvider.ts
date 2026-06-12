@@ -20,7 +20,7 @@ Translate an array of Korean text fragments into professional English while STRI
 2. **Order Preservation**: Do NOT reorder, merge, or split items.
 3. **Tag Preservation - CRITICAL**:
     - Preserve ALL tags EXACTLY as they appear: <b>, </b>, <i>, </i>, <u>, </u>, <br>, <color:XXXXXX>, </color>
-    - The <color:XXXXXX> tag contains a hex color code (e.g., <color:0000FF> for blue). Keep the exact color code.
+    - The <color:...> tag contains either a hex code (e.g., <color:0000FF>) or a theme token (e.g., <color:bg1>, <color:tx1.lm50000>). Treat the value as an OPAQUE ID — copy it character-for-character into the translation. NEVER translate, alter, or drop it.
     - **CRITICAL SCOPING**: Color tags must wrap **ONLY** the corresponding words. Do not extend the tag to the entire sentence if the original was specific.
     - **TAG REORDERING**: If the word order changes during translation, you **MUST** move the tag to wrap the translated word in its *new* position.
     - **Example**: '<color:0000FF>사과</color>를 좋아해' -> 'I like <color:0000FF>apples</color>' (Tag moved to end).
@@ -48,6 +48,29 @@ Translate an array of Korean text fragments into professional English while STRI
         prompt += `\n# Terminology/Glossary\n${glossary.trim()}\n`;
     }
     return prompt;
+};
+
+/**
+ * 텍스트에서 색상 토큰 목록을 추출합니다. (<color:0000FF>, <color:tx1.lm50000> 등)
+ */
+export const extractColorTokens = (text: string): string[] =>
+    Array.from(text.matchAll(/<color:([^>]+)>/gi), m => m[1].trim().toLowerCase());
+
+/**
+ * 번역 결과가 원본의 색상 태그를 보존했는지 검사합니다.
+ * 같은 색 조각이 병합될 수 있으므로 개수가 아닌 "고유 토큰 집합"으로 비교합니다.
+ * (색상 토큰 소실 = 글자색 깨짐으로 직결되는 치명적 결함)
+ */
+export const validateTagPreservation = (originals: string[], translations: string[]): boolean => {
+    if (originals.length !== translations.length) return false;
+    for (let i = 0; i < originals.length; i++) {
+        const origSet = new Set(extractColorTokens(originals[i]));
+        const transSet = new Set(extractColorTokens(translations[i] ?? ''));
+        for (const token of origSet) {
+            if (!transSet.has(token)) return false;
+        }
+    }
+    return true;
 };
 
 export const categorizeError = (error: unknown): Error => {
