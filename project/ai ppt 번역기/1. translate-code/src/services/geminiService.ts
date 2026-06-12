@@ -3,8 +3,13 @@ import { ProviderId, getApiKeyFromStorage } from './modelCatalog';
 import { buildSystemPrompt, getTranslateBatch, categorizeError } from './aiProvider';
 
 const DEFAULT_BATCH_SIZE = 25;
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 const CONCURRENCY = 2; // Gemini 15 RPM 안전선; Claude/OpenAI도 무리 없음
+
+const isRateLimitError = (error: unknown): boolean => {
+    const msg = error instanceof Error ? error.message : String(error);
+    return msg.includes('429') || msg.includes('rate_limit') || msg.includes('RESOURCE_EXHAUSTED');
+};
 
 export const estimateTokens = (texts: string[]): number => {
     const totalChars = texts.join('').length;
@@ -44,7 +49,8 @@ export const translateTexts = async (
             } catch (error) {
                 lastError = categorizeError(error);
                 if (attempt < MAX_RETRIES) {
-                    await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+                    const delay = isRateLimitError(error) ? 65000 : 2000 * attempt;
+                    await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
