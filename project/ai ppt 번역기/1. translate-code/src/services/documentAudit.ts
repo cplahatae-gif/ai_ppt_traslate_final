@@ -7,7 +7,7 @@
  * 3. 오버플로우 — 축소 적용 후에도 박스 용량을 초과할 가능성이 있는 도형 탐지
  */
 import JSZip from 'jszip';
-import { extractTextFromPptx, TextItem, getShapeExtent, estimateCapacityChars } from './pptxService';
+import { extractTextFromPptx, TextItem, getShapeExtent, estimateCapacityChars, getBodyInsetsPt } from './pptxService';
 import { extractColorTokens } from './aiProvider';
 
 const DRAWINGML_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main";
@@ -122,7 +122,8 @@ export const auditDocument = async (
             // 적용된 normAutofit fontScale 반영한 실효 폰트 크기로 용량 추정
             const normAutofit = txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'normAutofit')[0];
             const fontScale = normAutofit ? parseInt(normAutofit.getAttribute('fontScale') || '100000') / 100000 : 1.0;
-            const capacity = estimateCapacityChars(extent, maxSz * fontScale);
+            const insets = getBodyInsetsPt(txBody as Element);
+            const capacity = estimateCapacityChars(extent, maxSz * fontScale, insets.x, insets.y);
             if (capacity === null) continue;
 
             const overflowRatio = text.length / capacity;
@@ -263,7 +264,8 @@ export const remediateOverflows = async (
             if (maxSz === 0) continue;
 
             // 원본 폰트 크기 기준 용량 (fontScale 미적용 상태)
-            const fullCapacity = estimateCapacityChars(extent, maxSz);
+            const insets = getBodyInsetsPt(txBody as Element);
+            const fullCapacity = estimateCapacityChars(extent, maxSz, insets.x, insets.y);
             if (fullCapacity === null) continue;
 
             const chars = text.length;

@@ -39,6 +39,7 @@ Translate an array of Korean text fragments into professional English while STRI
     - Use **Title Case** for headers/titles (e.g., "Accident Summary").
     - Use **Sentence case** for body text.
 5. **Conciseness**: Prefer concise translations where possible to fit in slides.
+7. **Consistency**: Identical source items MUST get identical translations (same string in → same string out).
 6. **Roman Numerals**: Convert full-width roman numerals to half-width (Ⅰ→I, Ⅱ→II, Ⅲ→III, Ⅳ→IV, Ⅴ→V).
 `;
 
@@ -106,6 +107,23 @@ export const repairColorTags = (original: string, translated: string): string =>
     // 다색/부분색: 원본에 없는 색의 여는 태그만 제거 (짝 잃은 닫는 태그는 무해)
     return translated.replace(/<color:([^>]+)>/gi, (m, tok) =>
         origTokens.includes(tok.trim().toLowerCase()) ? m : '');
+};
+
+/**
+ * 동일 원문은 동일 번역으로 통일합니다. (번역 메모리 일관성)
+ * 표에 반복되는 라벨('지참' 등)이 배치에 따라 다르게 번역되는 문제 방지.
+ * 첫 번째 등장한 번역을 기준으로 통일.
+ */
+export const unifyTranslations = (originals: string[], translations: string[]): string[] => {
+    const firstSeen = new Map<string, string>();
+    return translations.map((trans, i) => {
+        const key = (originals[i] ?? '').trim();
+        if (!key) return trans;
+        const existing = firstSeen.get(key);
+        if (existing !== undefined) return existing;
+        firstSeen.set(key, trans);
+        return trans;
+    });
 };
 
 export const categorizeError = (error: unknown): Error => {

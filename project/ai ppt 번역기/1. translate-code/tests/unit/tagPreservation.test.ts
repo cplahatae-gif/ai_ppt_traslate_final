@@ -2,7 +2,7 @@
  * 색상 태그 보존 검증 (validateTagPreservation) + 결정적 복원 (repairColorTags) 테스트
  */
 import { describe, it, expect } from 'vitest';
-import { validateTagPreservation, repairColorTags, extractColorTokens } from '@src/services/aiProvider';
+import { validateTagPreservation, repairColorTags, extractColorTokens, unifyTranslations } from '@src/services/aiProvider';
 
 describe('extractColorTokens', () => {
     it('hex와 scheme 토큰을 모두 추출한다', () => {
@@ -104,5 +104,26 @@ describe('repairColorTags (결정적 복원)', () => {
         expect(repaired).not.toContain('<color:00FF00>');
         expect(repaired).toContain('Green');
         expect(repaired).toContain('<color:0000FF>Blue</color>');
+    });
+});
+
+describe('unifyTranslations (동일 원문 → 동일 번역)', () => {
+    it('반복 라벨의 비일관 번역을 첫 번역으로 통일 (지참→Bring/Required 실사례)', () => {
+        const orig = ['지참', '골재', '지참', '지참'];
+        const trans = ['Required', 'Aggregate', 'Bring', 'Required'];
+        expect(unifyTranslations(orig, trans))
+            .toEqual(['Required', 'Aggregate', 'Required', 'Required']);
+    });
+
+    it('서로 다른 원문은 건드리지 않음', () => {
+        const orig = ['하나', '둘'];
+        const trans = ['One', 'Two'];
+        expect(unifyTranslations(orig, trans)).toEqual(['One', 'Two']);
+    });
+
+    it('빈 원문은 통일 대상에서 제외', () => {
+        const orig = ['', ''];
+        const trans = ['A', 'B'];
+        expect(unifyTranslations(orig, trans)).toEqual(['A', 'B']);
     });
 });

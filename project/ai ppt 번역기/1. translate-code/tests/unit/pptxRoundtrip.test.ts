@@ -198,6 +198,39 @@ describe('오버플로우 축소', () => {
         expect(xml).toContain('sz="900"');
     });
 
+    it('여백 0인 초소형 라벨 박스는 명시 여백으로 용량 계산 (高→High 과축소 회귀 방지)', async () => {
+        // 20pt×22pt 박스 + lIns/rIns/tIns/bIns=0 — 기본 여백 가정 시 가용폭이 음수가 되어 과축소됨
+        const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:cSld><p:spTree>
+<p:sp>
+<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="254000" cy="279400"/></a:xfrm></p:spPr>
+<p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"/>
+<a:p><a:r><a:rPr lang="ko-KR" sz="1100"/><a:t>高</a:t></a:r></a:p>
+</p:txBody>
+</p:sp>
+</p:spTree></p:cSld>
+</p:sld>`;
+        const zip = new JSZip();
+        zip.file('ppt/slides/slide1.xml', xml);
+        const file = (await zip.generateAsync({ type: 'uint8array' })) as unknown as File;
+
+        const items = await extractTextFromPptx(file);
+        const translated: TextItem[] = [{
+            ...items[0],
+            text: 'High',
+            originalLength: 1,
+        }];
+
+        const blob = await replaceTextInPptx(file, translated);
+        const outXml = await readSlide(blob);
+        const m = outXml.match(/fontScale="(\d+)"/);
+        // 실제 여백(0) 기준 용량 ≈ 3자 → 'High'(4자) → √(3/4) ≈ 0.87 — 완만한 축소
+        if (m) {
+            expect(parseInt(m[1])).toBeGreaterThanOrEqual(80000);
+        }
+    });
+
     it('넓은 열의 표 셀은 글자수가 늘어도 폰트를 축소하지 않는다 (열너비 기반)', async () => {
         // tblGrid 포함 + 넓은 열(283pt) — '구분'→'Category' 과축소 회귀 방지
         const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

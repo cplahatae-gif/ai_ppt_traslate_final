@@ -375,18 +375,38 @@ const LINE_HEIGHT_RATIO = 1.22;
 const stripTags = (s: string): string => s.replace(/<[^>]*>/g, '');
 
 /**
+ * txBody의 bodyPr에서 실제 내부 여백(pt)을 읽습니다.
+ * 초소형 라벨 박스는 여백이 0으로 명시된 경우가 많아 기본값 가정 시 과축소됨.
+ */
+export const getBodyInsetsPt = (txBody: Element): { x: number; y: number } => {
+    const bodyPr = txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'bodyPr')[0];
+    const read = (name: string, defEmu: number): number => {
+        const v = bodyPr?.getAttribute(name);
+        return (v !== null && v !== undefined && v !== '' ? parseInt(v) : defEmu) / EMU_PER_PT;
+    };
+    return {
+        x: read('lIns', 91440) + read('rIns', 91440),
+        y: read('tIns', 45720) + read('bIns', 45720),
+    };
+};
+
+/**
  * 도형 크기와 폰트 크기로 박스가 수용 가능한 글자 수를 추정합니다.
  * @param extent 도형 크기 (EMU)
  * @param fontSzHundredths 폰트 크기 (1/100pt, 예: 1100 = 11pt)
+ * @param insetXPt 좌우 여백 합 (pt) — 미지정 시 PowerPoint 기본값
+ * @param insetYPt 상하 여백 합 (pt)
  */
 export const estimateCapacityChars = (
     extent: { cx: number; cy: number },
     fontSzHundredths: number,
+    insetXPt: number = INSET_X_PT,
+    insetYPt: number = INSET_Y_PT,
 ): number | null => {
     const fontPt = fontSzHundredths / 100;
     if (fontPt <= 0) return null;
-    const usableW = extent.cx / EMU_PER_PT - INSET_X_PT;
-    const usableH = extent.cy / EMU_PER_PT - INSET_Y_PT;
+    const usableW = extent.cx / EMU_PER_PT - insetXPt;
+    const usableH = extent.cy / EMU_PER_PT - insetYPt;
     if (usableW <= 0 || usableH <= 0) return null;
     const charsPerLine = Math.floor(usableW / (CHAR_WIDTH_RATIO * fontPt));
     const lines = Math.max(1, Math.floor(usableH / (LINE_HEIGHT_RATIO * fontPt)));
@@ -477,6 +497,7 @@ const planBodyScaling = (
     extent: { cx: number; cy: number } | null,
     maxSz: number | null,
     cellColWPt: number | null = null,
+    insets: { x: number; y: number } | null = null,
 ): BodyPlan => {
     const ratio = totalOrig > 0 ? totalTrans / totalOrig : 1.0;
     const plan: BodyPlan = { fontScale: 100000, szScale: 1.0, ratio };
@@ -504,7 +525,7 @@ const planBodyScaling = (
     }
 
     if (extent && maxSz) {
-        const capacity = estimateCapacityChars(extent, maxSz);
+        const capacity = estimateCapacityChars(extent, maxSz, insets?.x, insets?.y);
         if (capacity !== null) {
             if (totalTrans > capacity) {
                 // 폰트를 s배 하면 수용량은 1/s² → s = √(용량/글자수)
@@ -644,8 +665,9 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
         for (const group of groups.values()) {
             const extent = group.isTableCell ? null : getShapeExtent(group.txBody);
             const maxSz = getMaxFontSize(group.pNodes);
+            const insets = group.isTableCell ? null : getBodyInsetsPt(group.txBody);
             plans.set(group.txBody, planBodyScaling(
-                group.isTableCell, group.totalOrig, group.totalTrans, extent, maxSz, group.cellColWPt,
+                group.isTableCell, group.totalOrig, group.totalTrans, extent, maxSz, group.cellColWPt, insets,
             ));
         }
 

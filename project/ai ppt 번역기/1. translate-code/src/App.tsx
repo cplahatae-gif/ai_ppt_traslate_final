@@ -12,7 +12,7 @@ import { tokenManager } from './services/TokenManager';
 import { qualityService } from './services/QualityService';
 import { auditDocument, remediateOverflows, AuditReport } from './services/documentAudit';
 import { AuditReportCard } from './components/AuditReportCard';
-import { validateTagPreservation, repairColorTags } from './services/aiProvider';
+import { validateTagPreservation, repairColorTags, unifyTranslations } from './services/aiProvider';
 import { ProviderId, getProviderConfig, getApiKeyFromStorage, saveApiKeyToStorage } from './services/modelCatalog';
 
 type Status = 'idle' | 'analyzing' | 'translating' | 'fixing' | 'building' | 'verifying' | 'done' | 'error';
@@ -236,9 +236,12 @@ const App: React.FC = () => {
         console.warn('품질 분석 실패 — 건너뜀:', qErr);
       }
 
-      // ---- 4.5 색상 태그 결정적 복원 (재번역으로도 못 고친 경우의 최종 방어선) ----
-      // LLM이 색을 발명(※·① 등 경고 문장에 임의 빨간색)하거나 소실한 항목을
-      // 원본 토큰 기준으로 강제 정합화
+      // ---- 4.5 결정적 후처리 ----
+      // (1) 동일 원문 → 동일 번역 통일 (표 반복 라벨 '지참' 등의 비일관성 방지)
+      const unified = unifyTranslations(originalTexts, translatedTexts);
+      for (let i = 0; i < translatedTexts.length; i++) translatedTexts[i] = unified[i];
+      // (2) 색상 태그 강제 정합화 — LLM이 색을 발명(※·① 등에 임의 빨간색)하거나
+      // 소실한 항목을 원본 토큰 기준으로 복원
       for (let i = 0; i < translatedTexts.length; i++) {
         translatedTexts[i] = repairColorTags(originalTexts[i], translatedTexts[i] ?? '');
       }
