@@ -367,8 +367,9 @@ const EMU_PER_PT = 12700;
 // 기본 텍스트박스 내부 여백 (lIns/rIns 91440 EMU = 7.2pt, tIns/bIns 45720 EMU = 3.6pt)
 const INSET_X_PT = 14.4;
 const INSET_Y_PT = 7.2;
-// 영문 평균 글자폭/줄높이 휴리스틱 (폰트 pt 대비)
-const CHAR_WIDTH_RATIO = 0.52;
+// 평균 글자폭/줄높이 휴리스틱 (폰트 pt 대비)
+const CHAR_WIDTH_RATIO = 0.52;      // 영문 반각
+const KO_CHAR_WIDTH_RATIO = 0.95;   // 한글 전각
 const LINE_HEIGHT_RATIO = 1.22;
 
 const stripTags = (s: string): string => s.replace(/<[^>]*>/g, '');
@@ -417,6 +418,31 @@ export const getShapeExtent = (txBody: Element): { cx: number; cy: number } | nu
     return { cx, cy };
 };
 
+/**
+ * 표 셀이 속한 열의 너비(pt)를 구합니다. (gridSpan 병합 셀은 합산)
+ */
+const getCellColumnWidthPt = (tc: Element): number | null => {
+    const tr = tc.parentElement;
+    if (!tr || tr.localName !== 'tr') return null;
+    const tbl = tr.parentElement;
+    if (!tbl || tbl.localName !== 'tbl') return null;
+
+    let colIdx = 0;
+    for (const sib of Array.from(tr.children)) {
+        if (sib === tc) break;
+        if (sib.localName === 'tc') colIdx += parseInt(sib.getAttribute('gridSpan') || '1');
+    }
+    const grid = tbl.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'tblGrid')[0];
+    if (!grid) return null;
+    const cols = Array.from(grid.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'gridCol'));
+    const span = parseInt(tc.getAttribute('gridSpan') || '1');
+    let w = 0;
+    for (let k = colIdx; k < Math.min(colIdx + span, cols.length); k++) {
+        w += parseInt(cols[k].getAttribute('w') || '0');
+    }
+    return w > 0 ? w / EMU_PER_PT : null;
+};
+
 /** 문단들에서 명시된 최대 폰트 크기(sz, 1/100pt)를 찾습니다. */
 const getMaxFontSize = (pNodes: Element[]): number | null => {
     let max = 0;
@@ -450,6 +476,7 @@ const planBodyScaling = (
     totalTrans: number,
     extent: { cx: number; cy: number } | null,
     maxSz: number | null,
+    cellColWPt: number | null = null,
 ): BodyPlan => {
     const ratio = totalOrig > 0 ? totalTrans / totalOrig : 1.0;
     const plan: BodyPlan = { fontScale: 100000, szScale: 1.0, ratio };
@@ -457,8 +484,22 @@ const planBodyScaling = (
     if (ratio <= 1.15 || totalTrans < 4) return plan;
 
     if (isTableCell) {
-        // 행 높이가 자동으로 늘어나므로 √로 완만하게, 최저 0.7 (가독성)
-        plan.szScale = Math.max(0.7, Math.min(1.0, Math.sqrt(1 / ratio)));
+        // 열 너비 기반: 영문이 "원본 한글 줄수 + 1줄" 안에 들어가면 축소하지 않음
+        // (행 높이는 자동으로 늘어나므로 폭만이 실질 제약)
+        if (cellColWPt && maxSz) {
+            const fontPt = maxSz / 100;
+            const usableW = cellColWPt - INSET_X_PT;
+            if (usableW > 2) {
+                const origLines = Math.max(1, Math.ceil(totalOrig * KO_CHAR_WIDTH_RATIO * fontPt / usableW));
+                const allowedLines = origLines + 1;
+                // 영문 줄수(s배 폰트) = totalTrans×0.52×fontPt×s / usableW ≤ allowedLines
+                const sFit = (allowedLines * usableW) / (totalTrans * CHAR_WIDTH_RATIO * fontPt);
+                plan.szScale = Math.max(0.75, Math.min(1.0, sFit));
+                return plan;
+            }
+        }
+        // 폭 정보 없을 때 폴백: 확장비 기반 완만 축소
+        plan.szScale = Math.max(0.75, Math.min(1.0, Math.sqrt(1 / ratio)));
         return plan;
     }
 
@@ -564,6 +605,7 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
         interface BodyGroup {
             txBody: Element;
             isTableCell: boolean;
+            cellColWPt: number | null;
             pNodes: Element[];
             totalOrig: number;
             totalTrans: number;
@@ -579,9 +621,11 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
 
             let group = groups.get(txBody);
             if (!group) {
+                const tc = findAncestorByLocalName(txBody, 'tc');
                 group = {
                     txBody,
-                    isTableCell: findAncestorByLocalName(txBody, 'tc') !== null,
+                    isTableCell: tc !== null,
+                    cellColWPt: tc ? getCellColumnWidthPt(tc) : null,
                     pNodes: [],
                     totalOrig: 0,
                     totalTrans: 0,
@@ -601,7 +645,7 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
             const extent = group.isTableCell ? null : getShapeExtent(group.txBody);
             const maxSz = getMaxFontSize(group.pNodes);
             plans.set(group.txBody, planBodyScaling(
-                group.isTableCell, group.totalOrig, group.totalTrans, extent, maxSz,
+                group.isTableCell, group.totalOrig, group.totalTrans, extent, maxSz, group.cellColWPt,
             ));
         }
 

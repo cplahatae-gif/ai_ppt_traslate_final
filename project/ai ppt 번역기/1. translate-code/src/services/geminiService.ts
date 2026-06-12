@@ -11,6 +11,11 @@ const isRateLimitError = (error: unknown): boolean => {
     return msg.includes('429') || msg.includes('rate_limit') || msg.includes('RESOURCE_EXHAUSTED');
 };
 
+// LLM이 삽입한 리터럴 개행 제거 (줄바꿈은 <br> 태그로만 표현해야 함)
+// PPTX의 a:t 안에 개행이 들어가면 의도치 않은 빈 줄이 생김
+const normalizeTranslated = (texts: string[]): string[] =>
+    texts.map(t => (t ?? '').replace(/\s*\r?\n\s*/g, ' ').trim());
+
 // 재시도해도 해결되지 않는 오류 (잘못된 키, 없는 모델) — 즉시 실패
 const isNonRetryableError = (error: unknown): boolean => {
     const msg = error instanceof Error ? error.message : String(error);
@@ -54,7 +59,7 @@ export const translateTexts = async (
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 const systemPrompt = buildSystemPrompt(batch.length, promptInstruction, glossary);
-                const result = await translateBatch(batch, systemPrompt, model, finalApiKey);
+                const result = normalizeTranslated(await translateBatch(batch, systemPrompt, model, finalApiKey));
 
                 // 색상 태그 소실 검사 — 소실 시 1회만 재번역 시도
                 if (validateTagPreservation(batch, result)) {

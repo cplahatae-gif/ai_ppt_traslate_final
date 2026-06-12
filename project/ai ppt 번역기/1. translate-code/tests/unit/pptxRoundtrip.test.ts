@@ -181,7 +181,7 @@ describe('오버플로우 축소', () => {
         expect(xml).not.toContain('fontScale');
     });
 
-    it('표 셀은 normAutofit 대신 명시 sz를 직접 축소한다', async () => {
+    it('표 셀(열너비 정보 없음)은 폴백으로 명시 sz를 축소한다', async () => {
         const file = await buildPptx();
         const items = await extractTextFromPptx(file);
         const cellItem = items.find(it => it.text.includes('셀텍스트'))!;
@@ -194,7 +194,35 @@ describe('오버플로우 축소', () => {
         const blob = await replaceTextInPptx(file, translated);
         const xml = await readSlide(blob);
 
-        // 1200 → szScale 하한 0.7 → 840
-        expect(xml).toContain('sz="840"');
+        // 1200 → 폴백 szScale 하한 0.75 → 900
+        expect(xml).toContain('sz="900"');
+    });
+
+    it('넓은 열의 표 셀은 글자수가 늘어도 폰트를 축소하지 않는다 (열너비 기반)', async () => {
+        // tblGrid 포함 + 넓은 열(283pt) — '구분'→'Category' 과축소 회귀 방지
+        const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:cSld><p:spTree>
+<p:graphicFrame><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+<a:tbl><a:tblGrid><a:gridCol w="3600000"/></a:tblGrid><a:tr h="370840"><a:tc>
+<a:txBody><a:bodyPr/><a:p><a:r><a:rPr lang="ko-KR" sz="1100"/><a:t>구분</a:t></a:r></a:p></a:txBody>
+<a:tcPr/></a:tc></a:tr></a:tbl>
+</a:graphicData></a:graphic></p:graphicFrame>
+</p:spTree></p:cSld>
+</p:sld>`;
+        const zip = new JSZip();
+        zip.file('ppt/slides/slide1.xml', xml);
+        const file = (await zip.generateAsync({ type: 'uint8array' })) as unknown as File;
+
+        const items = await extractTextFromPptx(file);
+        const translated: TextItem[] = [{
+            ...items[0],
+            text: 'Category', // 2자→8자 (비율 4배)지만 열이 넓어 한 줄에 들어감
+            originalLength: 2,
+        }];
+
+        const blob = await replaceTextInPptx(file, translated);
+        const outXml = await readSlide(blob);
+        expect(outXml).toContain('sz="1100"'); // 축소 없음
     });
 });
