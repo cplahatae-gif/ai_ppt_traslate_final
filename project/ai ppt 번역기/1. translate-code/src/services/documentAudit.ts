@@ -7,11 +7,19 @@
  * 3. 오버플로우 — 축소 적용 후에도 박스 용량을 초과할 가능성이 있는 도형 탐지
  */
 import JSZip from 'jszip';
-import { extractTextFromPptx, TextItem, getShapeExtent, estimateCapacityChars, getBodyInsetsPt } from './pptxService';
+import { extractTextFromPptx, TextItem, getShapeExtent, getBodyInsetsPt } from './pptxService';
 import { extractColorTokens } from './aiProvider';
+import { measureWidthPt, linesNeededAtScale, solveFitScale } from './textMetrics';
 
 const DRAWINGML_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main";
 const KOREAN_RE = /[가-힣]/;
+const LINE_HEIGHT_RATIO = 1.22;
+
+/** txBody의 문단별 텍스트 목록 */
+const getParaTexts = (txBody: Element): string[] =>
+    Array.from(txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'))
+        .map(p => Array.from(p.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 't'))
+            .map(t => t.textContent || '').join(''));
 
 export type AuditIssueType = 'color-loss' | 'untranslated' | 'overflow';
 
@@ -30,6 +38,8 @@ export interface AuditReport {
     untranslatedCount: number;
     overflowCount: number;
     issues: AuditIssue[];
+    /** 번역 범위 밖 요소에 대한 사용자 고지 (이미지 글자, 노트, 폰트 대체 등) */
+    notices: string[];
 }
 
 const stripTags = (s: string): string => s.replace(/<[^>]*>/g, '');
@@ -119,15 +129,19 @@ export const auditDocument = async (
             }
             if (maxSz === 0) continue;
 
-            // 적용된 normAutofit fontScale 반영한 실효 폰트 크기로 용량 추정
+            // 적용된 normAutofit fontScale 반영, 실측 폭 기반으로 필요 높이 계산
             const normAutofit = txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'normAutofit')[0];
             const fontScale = normAutofit ? parseInt(normAutofit.getAttribute('fontScale') || '100000') / 100000 : 1.0;
             const insets = getBodyInsetsPt(txBody as Element);
-            const capacity = estimateCapacityChars(extent, maxSz * fontScale, insets.x, insets.y);
-            if (capacity === null) continue;
+            const fontPt = maxSz / 100;
+            const usableW = extent.cx / 12700 - insets.x;
+            const usableH = extent.cy / 12700 - insets.y;
+            if (usableW <= 0 || usableH <= 0) continue;
 
-            const overflowRatio = text.length / capacity;
-            if (overflowRatio > 1.3) {
+            const widths = getParaTexts(txBody as Element).map(t => measureWidthPt(t, fontPt));
+            const neededH = linesNeededAtScale(widths, fontScale, usableW) * LINE_HEIGHT_RATIO * fontPt * fontScale;
+            const overflowRatio = neededH / usableH;
+            if (overflowRatio > 1.25) {
                 // 이 txBody에 속한 번역 항목 인덱스 수집 (축약 재번역 대상)
                 const itemIndexes = Array.from(txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'))
                     .map(p => itemIndexByKey.get(`${slidePath}#${allParagraphs.indexOf(p)}`))
@@ -145,12 +159,39 @@ export const auditDocument = async (
 
     issues.sort((a, b) => a.slideNumber - b.slideNumber);
 
+    // ---- 4. 사용자 고지 항목 (번역 범위 밖 요소) ----
+    const notices: string[] = [];
+    const allPaths = Object.keys(zip.files);
+
+    const imageCount = allPaths.filter(p => p.match(/^ppt\/media\/.*\.(png|jpe?g|gif|bmp|tiff?|emf|wmf)$/i)).length;
+    if (imageCount > 0) {
+        notices.push(`이미지 ${imageCount}개 포함 — 그림 속에 박힌 글자는 번역되지 않습니다.`);
+    }
+
+    const noteFiles = allPaths.filter(p => p.match(/^ppt\/notesSlides\/notesSlide\d+\.xml$/));
+    let koreanNoteCount = 0;
+    for (const p of noteFiles) {
+        const noteXml = await zip.file(p)!.async('string');
+        const texts = (noteXml.match(/<a:t>([^<]*)<\/a:t>/g) || []).join('');
+        if (KOREAN_RE.test(texts)) koreanNoteCount++;
+    }
+    if (koreanNoteCount > 0) {
+        notices.push(`발표자 노트 ${koreanNoteCount}개 슬라이드에 한글 있음 — 노트는 번역 대상이 아닙니다.`);
+    }
+
+    if (allPaths.some(p => p.startsWith('ppt/diagrams/'))) {
+        notices.push('다이어그램(SmartArt) 텍스트는 번역되지 않습니다.');
+    }
+
+    notices.push('한글 폰트(맑은 고딕 등)는 영문 환경에서 다른 폰트로 대체될 수 있습니다 — 실제 PowerPoint에서 최종 확인을 권장합니다.');
+
     return {
         checkedSlides,
         colorLossCount: issues.filter(i => i.type === 'color-loss').length,
         untranslatedCount: issues.filter(i => i.type === 'untranslated').length,
         overflowCount: issues.filter(i => i.type === 'overflow').length,
         issues,
+        notices,
     };
 };
 
@@ -263,16 +304,23 @@ export const remediateOverflows = async (
             }
             if (maxSz === 0) continue;
 
-            // 원본 폰트 크기 기준 용량 (fontScale 미적용 상태)
+            // 실측 폭 기반: 박스에 들어가는 최대 폰트 배율 탐색
             const insets = getBodyInsetsPt(txBody as Element);
-            const fullCapacity = estimateCapacityChars(extent, maxSz, insets.x, insets.y);
-            if (fullCapacity === null) continue;
+            const fontPt = maxSz / 100;
+            const usableW = extent.cx / 12700 - insets.x;
+            const usableH = extent.cy / 12700 - insets.y;
+            if (usableW <= 0 || usableH <= 0) continue;
 
-            const chars = text.length;
-            if (chars <= fullCapacity) continue; // 원본 크기로도 수용 — 보정 불필요
+            const paraTexts = getParaTexts(txBody as Element);
+            const widths = paraTexts.map(p => measureWidthPt(p, fontPt));
+            const lineH = LINE_HEIGHT_RATIO * fontPt;
+            const fitsAt = (s: number, growH: number = 1): boolean =>
+                linesNeededAtScale(widths, s, usableW) * lineH * s
+                <= (extent.cy * growH) / 12700 - insets.y;
+
+            if (fitsAt(1)) continue; // 원본 크기로 수용 — 보정 불필요
 
             const inGroup = findAncestorGroup(txBody as Element);
-            const sFit = Math.sqrt(fullCapacity / chars);
 
             // 박스 확대 가능 여부 (그룹 밖 + 슬라이드 하단 경계 내)
             const sp = txBody.parentElement!;
@@ -287,34 +335,34 @@ export const remediateOverflows = async (
                 ext!.setAttribute('cy', String(Math.round(extent.cy * g)));
             };
 
-            if (sFit >= MIN_FONT_SCALE_SAFE) {
-                // 1단계: 글자크기 축소만으로 해결
+            const sFit = solveFitScale(paraTexts, fontPt, usableW, usableH, LINE_HEIGHT_RATIO, MIN_FONT_SCALE_SAFE);
+            if (sFit !== null) {
+                // 1단계: 글자크기 축소만으로 해결 (≥ 0.6)
                 setAutofit(doc, txBody as Element, sFit);
                 boxesAdjusted++; changed = true;
+            } else if (canGrow(MAX_BOX_GROWTH) && fitsAt(MIN_FONT_SCALE_SAFE, MAX_BOX_GROWTH)) {
+                // 2단계: 박스 확대(+30% 이내 최소량) + 글자 0.6
+                let g = 1.05;
+                while (g < MAX_BOX_GROWTH && !fitsAt(MIN_FONT_SCALE_SAFE, g)) g += 0.05;
+                grow(Math.min(g, MAX_BOX_GROWTH));
+                setAutofit(doc, txBody as Element, MIN_FONT_SCALE_SAFE);
+                boxesAdjusted++; changed = true;
+            } else if (canGrow(MAX_BOX_GROWTH) && fitsAt(MIN_FONT_SCALE_HARD, MAX_BOX_GROWTH)) {
+                // 3단계: 박스 +30% + 글자 0.5
+                grow(MAX_BOX_GROWTH);
+                setAutofit(doc, txBody as Element, MIN_FONT_SCALE_HARD);
+                boxesAdjusted++; changed = true;
+            } else if (inGroup && fitsAt(MIN_FONT_SCALE_HARD)) {
+                // 그룹 내부: 박스 확대 불가 → 글자 0.5 까지만
+                setAutofit(doc, txBody as Element, MIN_FONT_SCALE_HARD);
+                boxesAdjusted++; changed = true;
             } else {
-                const gNeeded = Math.min(chars * MIN_FONT_SCALE_SAFE ** 2 / fullCapacity, MAX_BOX_GROWTH);
-                if (canGrow(gNeeded) && chars <= fullCapacity * gNeeded / MIN_FONT_SCALE_SAFE ** 2) {
-                    // 2단계: 박스 확대 + 글자 0.6
-                    grow(gNeeded);
-                    setAutofit(doc, txBody as Element, MIN_FONT_SCALE_SAFE);
-                    boxesAdjusted++; changed = true;
-                } else if (canGrow(MAX_BOX_GROWTH) && chars <= fullCapacity * MAX_BOX_GROWTH / MIN_FONT_SCALE_HARD ** 2) {
-                    // 3단계: 박스 +30% + 글자 0.5
-                    grow(MAX_BOX_GROWTH);
-                    setAutofit(doc, txBody as Element, MIN_FONT_SCALE_HARD);
-                    boxesAdjusted++; changed = true;
-                } else if (inGroup && chars <= fullCapacity / MIN_FONT_SCALE_HARD ** 2) {
-                    // 그룹 내부: 박스 확대 불가 → 글자 0.5 까지만
-                    setAutofit(doc, txBody as Element, Math.max(sFit, MIN_FONT_SCALE_HARD));
-                    boxesAdjusted++; changed = true;
-                } else {
-                    // 조정만으로 부족 → 축약 재번역 필요
-                    setAutofit(doc, txBody as Element, MIN_FONT_SCALE_HARD);
-                    changed = true;
-                    for (const p of Array.from(txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'))) {
-                        const idx = itemIndexByKey.get(`${slidePath}#${allParagraphs.indexOf(p)}`);
-                        if (idx !== undefined) shortenIndexes.add(idx);
-                    }
+                // 조정만으로 부족 → 축약 재번역 필요
+                setAutofit(doc, txBody as Element, MIN_FONT_SCALE_HARD);
+                changed = true;
+                for (const p of Array.from(txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'))) {
+                    const idx = itemIndexByKey.get(`${slidePath}#${allParagraphs.indexOf(p)}`);
+                    if (idx !== undefined) shortenIndexes.add(idx);
                 }
             }
         }

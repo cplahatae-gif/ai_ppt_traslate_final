@@ -12,7 +12,7 @@ import { tokenManager } from './services/TokenManager';
 import { qualityService } from './services/QualityService';
 import { auditDocument, remediateOverflows, AuditReport } from './services/documentAudit';
 import { AuditReportCard } from './components/AuditReportCard';
-import { validateTagPreservation, repairColorTags, unifyTranslations } from './services/aiProvider';
+import { validateTagPreservation, repairColorTags, unifyTranslations, abbreviateForFit } from './services/aiProvider';
 import { ProviderId, getProviderConfig, getApiKeyFromStorage, saveApiKeyToStorage } from './services/modelCatalog';
 
 type Status = 'idle' | 'analyzing' | 'translating' | 'fixing' | 'building' | 'verifying' | 'done' | 'error';
@@ -21,6 +21,7 @@ interface FixSummary {
     retranslated: number;
     suggestionsApplied: number;
     boxesAdjusted: number;
+    abbreviated: number;
     shortened: number;
 }
 
@@ -258,17 +259,37 @@ const App: React.FC = () => {
       let finalItems = buildItems();
       let finalBlob = await replaceTextInPptx(file, finalItems);
 
-      // ---- 6. 오버플로우 보정: 글자크기 → 박스크기 → 축약 재번역 병행 ----
+      // ---- 6. 오버플로우 보정 사다리: 글자크기 → 박스크기 → 약어 → 축약 재번역 ----
       let boxesAdjusted = 0;
+      let abbreviated = 0;
       let shortened = 0;
       try {
         setStatus('fixing');
         setProgressMessage('박스 넘침 보정 중 (글자크기·박스크기 조정)...');
-        const rem = await remediateOverflows(finalBlob, finalItems, startPage, endPage);
+        let rem = await remediateOverflows(finalBlob, finalItems, startPage, endPage);
         finalBlob = rem.blob;
         boxesAdjusted = rem.boxesAdjusted;
 
-        // 조정만으로 부족한 박스만 축약 재번역 (최후 수단)
+        // 사다리 다음 단: 결정적 약어 치환 (Management→Mgmt 등, 오역 리스크 0)
+        if (rem.shortenItemIndexes.length > 0) {
+          for (const idx of rem.shortenItemIndexes) {
+            const abbr = abbreviateForFit(translatedTexts[idx] ?? '');
+            if (abbr !== translatedTexts[idx]) {
+              translatedTexts[idx] = abbr;
+              abbreviated++;
+            }
+          }
+          if (abbreviated > 0) {
+            setProgressMessage(`약어 치환 ${abbreviated}건 반영하여 재검사 중...`);
+            finalItems = buildItems();
+            const blobA = await replaceTextInPptx(file, finalItems);
+            rem = await remediateOverflows(blobA, finalItems, startPage, endPage);
+            finalBlob = rem.blob;
+            boxesAdjusted = rem.boxesAdjusted;
+          }
+        }
+
+        // 최후 수단: 약어로도 부족한 박스만 축약 재번역
         if (rem.shortenItemIndexes.length > 0) {
           setProgressMessage(`심한 넘침 ${rem.shortenItemIndexes.length}건 축약 재번역 중...`);
           const shortenPrompt = combinedPrompt +
@@ -303,7 +324,7 @@ const App: React.FC = () => {
         console.warn('오버플로우 보정 실패 — 보정 전 결과 사용:', remErr);
       }
 
-      setFixSummary({ retranslated, suggestionsApplied, boxesAdjusted, shortened });
+      setFixSummary({ retranslated, suggestionsApplied, boxesAdjusted, abbreviated, shortened });
 
       // ---- 7. 최종 문서 감사 ----
       setStatus('verifying');
@@ -406,9 +427,9 @@ const App: React.FC = () => {
                 </div>
                 <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white">번역이 완료되었습니다!</h2>
                 <p className="text-slate-500 mb-2">감사·품질 분석·자동 수정을 거친 최종본입니다.</p>
-                {fixSummary && (fixSummary.retranslated > 0 || fixSummary.suggestionsApplied > 0 || fixSummary.boxesAdjusted > 0 || fixSummary.shortened > 0) ? (
+                {fixSummary && (fixSummary.retranslated > 0 || fixSummary.suggestionsApplied > 0 || fixSummary.boxesAdjusted > 0 || fixSummary.abbreviated > 0 || fixSummary.shortened > 0) ? (
                   <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 inline-block mb-6">
-                    자동 수정 적용: 재번역 {fixSummary.retranslated}건 · 표현 개선 {fixSummary.suggestionsApplied}건 · 글자/박스 크기 보정 {fixSummary.boxesAdjusted}건 · 축약 {fixSummary.shortened}건
+                    자동 수정 적용: 재번역 {fixSummary.retranslated}건 · 표현 개선 {fixSummary.suggestionsApplied}건 · 글자/박스 크기 보정 {fixSummary.boxesAdjusted}건 · 약어 {fixSummary.abbreviated}건 · 축약 {fixSummary.shortened}건
                   </p>
                 ) : (
                   <p className="text-xs text-slate-400 mb-6">자동 수정이 필요한 항목이 없었습니다.</p>

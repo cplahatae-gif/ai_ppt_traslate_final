@@ -71,6 +71,22 @@ export const AuditReportCard: React.FC<AuditReportCardProps> = ({ report }) => {
                     ))}
                 </ul>
             )}
+
+            {report.notices.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">info</span> 참고 사항
+                    </p>
+                    <ul className="space-y-1">
+                        {report.notices.map((notice, i) => (
+                            <li key={i} className="text-[11px] text-slate-500 flex items-start gap-1.5">
+                                <span className="text-slate-300 mt-px">•</span>
+                                <span>{notice}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
     );
 };

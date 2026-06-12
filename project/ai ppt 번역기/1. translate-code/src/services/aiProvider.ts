@@ -126,6 +126,27 @@ export const unifyTranslations = (originals: string[], translations: string[]): 
     });
 };
 
+/**
+ * 박스 넘침 항목용 표준 약어 치환 (결정적 — 오역 리스크 0).
+ * LLM 축약 재번역 전에 먼저 시도하는 가장 약한 개입.
+ */
+const ABBREVIATIONS: [RegExp, string][] = [
+    [/\bManagement\b/g, 'Mgmt'],
+    [/\bDepartment\b/g, 'Dept.'],
+    [/\bInformation\b/g, 'Info'],
+    [/\bApproximately\b/g, 'Approx.'],
+    [/\bAverage\b/g, 'Avg.'],
+    [/\bMaximum\b/g, 'Max.'],
+    [/\bMinimum\b/g, 'Min.'],
+    [/\bNumber\b/g, 'No.'],
+    [/\bEquipment\b/g, 'Eqpt.'],
+    [/\bRequirements?\b/g, 'Req.'],
+    [/ and /g, ' & '],
+];
+
+export const abbreviateForFit = (text: string): string =>
+    ABBREVIATIONS.reduce((t, [re, rep]) => t.replace(re, rep), text);
+
 export const categorizeError = (error: unknown): Error => {
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('401') || msg.includes('403') || msg.includes('API_KEY_INVALID') || msg.includes('authentication')) {

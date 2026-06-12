@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { measureWidthPt, solveFitScale } from './textMetrics';
 
 export interface TextItem {
     slidePath: string;
@@ -9,6 +10,10 @@ export interface TextItem {
 }
 
 const DRAWINGML_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/main";
+const CHART_NAMESPACE = "http://schemas.openxmlformats.org/drawingml/2006/chart";
+
+// 차트 문자열 캐시(c:v) 항목은 문단 인덱스와 충돌하지 않도록 오프셋으로 구분
+export const CHART_STR_INDEX_BASE = 100000;
 
 /**
  * PPTX 파일의 총 슬라이드 개수를 반환합니다.
@@ -48,41 +53,12 @@ const extractColorToken = (rPr: Element | undefined): string => {
 };
 
 /**
- * PPTX 파일에서 텍스트를 추출합니다. (스타일 태그 보존)
- * @param file PPTX 파일
- * @param startSlide 시작 슬라이드 번호 (1부터)
- * @param endSlide 끝 슬라이드 번호 (포함)
+ * 문서(슬라이드 또는 차트)의 모든 a:p 문단에서 태그 포함 텍스트 항목을 수집합니다.
  */
-export const extractTextFromPptx = async (file: File, startSlide: number = 1, endSlide: number = 9999): Promise<TextItem[]> => {
-    const zip = await JSZip.loadAsync(file);
-    const allFiles = Object.keys(zip.files);
+const collectParagraphItems = (xmlDoc: Document, path: string, slideNum: number, out: TextItem[]): void => {
+    const paragraphNodes = Array.from(xmlDoc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'));
 
-    // slide1.xml, slide2.xml ... 순서대로 정렬하기 위해 번호 추출 및 정렬
-    const slideFiles = allFiles
-        .filter(path => path.match(/^ppt\/slides\/slide(\d+)\.xml$/))
-        .sort((a, b) => {
-            const numA = parseInt(a.match(/slide(\d+)\.xml/)![1]);
-            const numB = parseInt(b.match(/slide(\d+)\.xml/)![1]);
-            return numA - numB;
-        });
-
-    const allTextItems: TextItem[] = [];
-    const parser = new DOMParser();
-
-    // 범위에 해당하는 슬라이드만 처리
-    const targetSlides = slideFiles.filter((_, index) => {
-        const slideNum = index + 1;
-        return slideNum >= startSlide && slideNum <= endSlide;
-    });
-
-    for (const slidePath of targetSlides) {
-        const slideNum = parseInt(slidePath.match(/slide(\d+)\.xml/)![1]);
-        const slideXml = await zip.file(slidePath)!.async('string');
-        const xmlDoc = parser.parseFromString(slideXml, 'application/xml');
-
-        const paragraphNodes = Array.from(xmlDoc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'));
-
-        paragraphNodes.forEach((pNode, index) => {
+    paragraphNodes.forEach((pNode, index) => {
             // 문단 내의 노드(Run, Break)들을 순회하며 텍스트와 줄바꿈 추출
             // getElementsByTagNameNS 대신 childNodes를 순회해야 순서를 지킬 수 있음
             const childNodes = Array.from(pNode.childNodes);
@@ -164,14 +140,96 @@ export const extractTextFromPptx = async (file: File, startSlide: number = 1, en
             formattedText += flushBuffer();
 
             if (hasText && formattedText.trim() !== '') {
-                allTextItems.push({
-                    slidePath,
+                out.push({
+                    slidePath: path,
                     paragraphIndex: index,
                     text: formattedText,
                     slideNumber: slideNum
                 });
             }
+    });
+};
+
+const KOREAN_TEXT_RE = /[가-힣]/;
+
+/**
+ * 차트 XML에서 번역 대상 텍스트를 수집합니다.
+ * - 리치텍스트(제목 등): a:p 문단 — 슬라이드와 동일 처리
+ * - 문자열 캐시(축·범례·계열명): c:strCache/c:strLit 안의 c:v — 한글 포함만,
+ *   숫자 캐시(c:numCache)는 데이터 값이므로 제외
+ */
+const collectChartItems = (xmlDoc: Document, path: string, slideNum: number, out: TextItem[]): void => {
+    collectParagraphItems(xmlDoc, path, slideNum, out);
+
+    const vNodes = Array.from(xmlDoc.getElementsByTagNameNS(CHART_NAMESPACE, 'v'));
+    vNodes.forEach((v, idx) => {
+        const cacheAncestor = v.parentElement?.parentElement; // c:v < c:pt < c:strCache
+        const localName = cacheAncestor?.localName;
+        if (localName !== 'strCache' && localName !== 'strLit') return;
+        const text = v.textContent || '';
+        if (!KOREAN_TEXT_RE.test(text)) return; // 숫자/영문 라벨은 보존
+        out.push({
+            slidePath: path,
+            paragraphIndex: CHART_STR_INDEX_BASE + idx,
+            text,
+            slideNumber: slideNum,
         });
+    });
+};
+
+/**
+ * PPTX 파일에서 텍스트를 추출합니다. (스타일 태그 보존, 차트 라벨 포함)
+ * @param file PPTX 파일
+ * @param startSlide 시작 슬라이드 번호 (1부터)
+ * @param endSlide 끝 슬라이드 번호 (포함)
+ */
+export const extractTextFromPptx = async (file: File, startSlide: number = 1, endSlide: number = 9999): Promise<TextItem[]> => {
+    const zip = await JSZip.loadAsync(file);
+    const allFiles = Object.keys(zip.files);
+
+    // slide1.xml, slide2.xml ... 순서대로 정렬하기 위해 번호 추출 및 정렬
+    const slideFiles = allFiles
+        .filter(path => path.match(/^ppt\/slides\/slide(\d+)\.xml$/))
+        .sort((a, b) => {
+            const numA = parseInt(a.match(/slide(\d+)\.xml/)![1]);
+            const numB = parseInt(b.match(/slide(\d+)\.xml/)![1]);
+            return numA - numB;
+        });
+
+    const allTextItems: TextItem[] = [];
+    const parser = new DOMParser();
+
+    // 범위에 해당하는 슬라이드만 처리
+    const targetSlides = slideFiles.filter((_, index) => {
+        const slideNum = index + 1;
+        return slideNum >= startSlide && slideNum <= endSlide;
+    });
+
+    // 대상 슬라이드가 참조하는 차트 수집 (rels에서 매핑)
+    const chartToSlide = new Map<string, number>();
+    for (const slidePath of targetSlides) {
+        const slideNum = parseInt(slidePath.match(/slide(\d+)\.xml/)![1]);
+        const relsFile = zip.file(slidePath.replace(/slides\/(slide\d+\.xml)$/, 'slides/_rels/$1.rels'));
+        if (!relsFile) continue;
+        const relsXml = await relsFile.async('string');
+        for (const m of relsXml.matchAll(/Target="\.\.\/(charts\/chart\d+\.xml)"/g)) {
+            chartToSlide.set(`ppt/${m[1]}`, slideNum);
+        }
+    }
+
+    for (const slidePath of targetSlides) {
+        const slideNum = parseInt(slidePath.match(/slide(\d+)\.xml/)![1]);
+        const slideXml = await zip.file(slidePath)!.async('string');
+        const xmlDoc = parser.parseFromString(slideXml, 'application/xml');
+        collectParagraphItems(xmlDoc, slidePath, slideNum, allTextItems);
+    }
+
+    for (const [chartPath, slideNum] of chartToSlide) {
+        const chartFile = zip.file(chartPath);
+        if (!chartFile) continue;
+        const chartXml = await chartFile.async('string');
+        const xmlDoc = parser.parseFromString(chartXml, 'application/xml');
+        collectChartItems(xmlDoc, chartPath, slideNum, allTextItems);
     }
 
     return allTextItems;
@@ -366,9 +424,7 @@ const createRunsFromTaggedText = (xmlDoc: Document, text: string, defaultProps?:
 const EMU_PER_PT = 12700;
 // 기본 텍스트박스 내부 여백 (lIns/rIns 91440 EMU = 7.2pt, tIns/bIns 45720 EMU = 3.6pt)
 const INSET_X_PT = 14.4;
-const INSET_Y_PT = 7.2;
 // 평균 글자폭/줄높이 휴리스틱 (폰트 pt 대비)
-const CHAR_WIDTH_RATIO = 0.52;      // 영문 반각
 const KO_CHAR_WIDTH_RATIO = 0.95;   // 한글 전각
 const LINE_HEIGHT_RATIO = 1.22;
 
@@ -388,29 +444,6 @@ export const getBodyInsetsPt = (txBody: Element): { x: number; y: number } => {
         x: read('lIns', 91440) + read('rIns', 91440),
         y: read('tIns', 45720) + read('bIns', 45720),
     };
-};
-
-/**
- * 도형 크기와 폰트 크기로 박스가 수용 가능한 글자 수를 추정합니다.
- * @param extent 도형 크기 (EMU)
- * @param fontSzHundredths 폰트 크기 (1/100pt, 예: 1100 = 11pt)
- * @param insetXPt 좌우 여백 합 (pt) — 미지정 시 PowerPoint 기본값
- * @param insetYPt 상하 여백 합 (pt)
- */
-export const estimateCapacityChars = (
-    extent: { cx: number; cy: number },
-    fontSzHundredths: number,
-    insetXPt: number = INSET_X_PT,
-    insetYPt: number = INSET_Y_PT,
-): number | null => {
-    const fontPt = fontSzHundredths / 100;
-    if (fontPt <= 0) return null;
-    const usableW = extent.cx / EMU_PER_PT - insetXPt;
-    const usableH = extent.cy / EMU_PER_PT - insetYPt;
-    if (usableW <= 0 || usableH <= 0) return null;
-    const charsPerLine = Math.floor(usableW / (CHAR_WIDTH_RATIO * fontPt));
-    const lines = Math.max(1, Math.floor(usableH / (LINE_HEIGHT_RATIO * fontPt)));
-    return Math.max(1, charsPerLine * lines);
 };
 
 const findAncestorByLocalName = (node: Element, localName: string): Element | null => {
@@ -485,27 +518,28 @@ interface BodyPlan {
 }
 
 /**
- * txBody 단위로 축소 계획을 세웁니다.
- * - 도형 + 크기 정보 있음: 박스 용량(글자수) 추정 → 넘칠 때만 √(용량/글자수)로 축소
+ * txBody 단위로 축소 계획을 세웁니다. (텍스트 폭은 Canvas 실측 — textMetrics)
+ * - 도형 + 크기 정보 있음: 박스에 들어가는 최대 폰트 배율을 직접 탐색
  * - 도형 + 크기 정보 없음: 확장비 기반 보수적 축소
- * - 표 셀: normAutofit이 무시되므로 run sz 직접 축소 (행 높이는 자동 증가하므로 √ 완화)
+ * - 표 셀: normAutofit이 무시되므로 run sz 직접 축소 (행 높이는 자동 증가)
  */
 const planBodyScaling = (
     isTableCell: boolean,
     totalOrig: number,
-    totalTrans: number,
+    paraTexts: string[],
     extent: { cx: number; cy: number } | null,
     maxSz: number | null,
     cellColWPt: number | null = null,
     insets: { x: number; y: number } | null = null,
 ): BodyPlan => {
+    const totalTrans = paraTexts.reduce((n, t) => n + t.length, 0);
     const ratio = totalOrig > 0 ? totalTrans / totalOrig : 1.0;
     const plan: BodyPlan = { fontScale: 100000, szScale: 1.0, ratio };
 
     if (ratio <= 1.15 || totalTrans < 4) return plan;
 
     if (isTableCell) {
-        // 열 너비 기반: 영문이 "원본 한글 줄수 + 1줄" 안에 들어가면 축소하지 않음
+        // 열 너비 기반: 영문(실측 폭)이 "원본 한글 줄수 + 1줄" 안에 들어가면 축소하지 않음
         // (행 높이는 자동으로 늘어나므로 폭만이 실질 제약)
         if (cellColWPt && maxSz) {
             const fontPt = maxSz / 100;
@@ -513,8 +547,8 @@ const planBodyScaling = (
             if (usableW > 2) {
                 const origLines = Math.max(1, Math.ceil(totalOrig * KO_CHAR_WIDTH_RATIO * fontPt / usableW));
                 const allowedLines = origLines + 1;
-                // 영문 줄수(s배 폰트) = totalTrans×0.52×fontPt×s / usableW ≤ allowedLines
-                const sFit = (allowedLines * usableW) / (totalTrans * CHAR_WIDTH_RATIO * fontPt);
+                const transWidth = paraTexts.reduce((w, t) => w + measureWidthPt(t, fontPt), 0);
+                const sFit = (allowedLines * usableW) / Math.max(transWidth, 1);
                 plan.szScale = Math.max(0.75, Math.min(1.0, sFit));
                 return plan;
             }
@@ -524,15 +558,15 @@ const planBodyScaling = (
         return plan;
     }
 
-    if (extent && maxSz) {
-        const capacity = estimateCapacityChars(extent, maxSz, insets?.x, insets?.y);
-        if (capacity !== null) {
-            if (totalTrans > capacity) {
-                // 폰트를 s배 하면 수용량은 1/s² → s = √(용량/글자수)
-                const s = Math.max(0.6, Math.min(1.0, Math.sqrt(capacity / totalTrans)));
-                plan.fontScale = Math.round(s * 100000);
-            }
-            return plan; // 용량 내에 들어가면 축소하지 않음 (넓은 박스 보호)
+    if (extent && maxSz && insets) {
+        const fontPt = maxSz / 100;
+        const usableW = extent.cx / EMU_PER_PT - insets.x;
+        const usableH = extent.cy / EMU_PER_PT - insets.y;
+        if (usableW > 0 && usableH > 0) {
+            const s = solveFitScale(paraTexts, fontPt, usableW, usableH, LINE_HEIGHT_RATIO, 0.6);
+            // null = 0.6으로도 안 들어감 → 하한 적용 (잔여 넘침은 보정/감사 단계에서 처리)
+            plan.fontScale = Math.round((s ?? 0.6) * 100000);
+            return plan;
         }
     }
 
@@ -628,6 +662,7 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
             isTableCell: boolean;
             cellColWPt: number | null;
             pNodes: Element[];
+            paraTexts: string[];
             totalOrig: number;
             totalTrans: number;
         }
@@ -635,6 +670,7 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
         const itemBody = new Map<TextItem, BodyGroup>();
 
         for (const item of itemsBySlide[slidePath]) {
+            if (item.paragraphIndex >= CHART_STR_INDEX_BASE) continue; // 차트 문자열은 스케일링 비대상
             const pNode = paragraphNodes[item.paragraphIndex];
             if (!pNode) continue;
             const txBody = findAncestorByLocalName(pNode, 'txBody');
@@ -648,15 +684,17 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
                     isTableCell: tc !== null,
                     cellColWPt: tc ? getCellColumnWidthPt(tc) : null,
                     pNodes: [],
+                    paraTexts: [],
                     totalOrig: 0,
                     totalTrans: 0,
                 };
                 groups.set(txBody, group);
             }
             group.pNodes.push(pNode);
-            const transLen = stripTags(item.text).length;
-            group.totalTrans += transLen;
-            group.totalOrig += item.originalLength ?? transLen;
+            const transText = stripTags(item.text);
+            group.paraTexts.push(transText);
+            group.totalTrans += transText.length;
+            group.totalOrig += item.originalLength ?? transText.length;
             itemBody.set(item, group);
         }
 
@@ -667,12 +705,20 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
             const maxSz = getMaxFontSize(group.pNodes);
             const insets = group.isTableCell ? null : getBodyInsetsPt(group.txBody);
             plans.set(group.txBody, planBodyScaling(
-                group.isTableCell, group.totalOrig, group.totalTrans, extent, maxSz, group.cellColWPt, insets,
+                group.isTableCell, group.totalOrig, group.paraTexts, extent, maxSz, group.cellColWPt, insets,
             ));
         }
 
         // ---- 3단계: 문단 치환 ----
         for (const item of itemsBySlide[slidePath]) {
+            // 차트 문자열 캐시(c:v): 텍스트만 교체 (서식 없음)
+            if (item.paragraphIndex >= CHART_STR_INDEX_BASE) {
+                const vNodes = xmlDoc.getElementsByTagNameNS(CHART_NAMESPACE, 'v');
+                const vNode = vNodes[item.paragraphIndex - CHART_STR_INDEX_BASE];
+                if (vNode) vNode.textContent = stripTags(item.text);
+                continue;
+            }
+
             const pNode = paragraphNodes[item.paragraphIndex];
             if (!pNode) continue;
 
