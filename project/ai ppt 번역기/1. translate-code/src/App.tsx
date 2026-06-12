@@ -26,9 +26,13 @@ const App: React.FC = () => {
   const [provider, setProvider] = useState<ProviderId>(() =>
     (localStorage.getItem('ai_provider') as ProviderId) || 'gemini'
   );
-  const [model, setModel] = useState<string>(() =>
-    localStorage.getItem('ai_model') || 'gemini-2.5-flash'
-  );
+  const [model, setModel] = useState<string>(() => {
+    const storedProvider = (localStorage.getItem('ai_provider') as ProviderId) || 'gemini';
+    const storedModel = localStorage.getItem('ai_model');
+    const config = getProviderConfig(storedProvider);
+    const isValid = config.models.some(m => m.id === storedModel);
+    return isValid ? storedModel! : config.defaultModel;
+  });
   const [apiKey, setApiKey] = useState(() => getApiKeyFromStorage(
     (localStorage.getItem('ai_provider') as ProviderId) || 'gemini'
   ));

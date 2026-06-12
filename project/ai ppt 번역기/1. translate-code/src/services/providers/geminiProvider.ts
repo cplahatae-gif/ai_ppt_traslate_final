@@ -12,6 +12,9 @@ export const geminiTranslateBatch: TranslateBatchFn = async (
     const ai = new GoogleGenAI({ apiKey });
     const prompt = `Translate these ${batch.length} items to English:\n${JSON.stringify(batch)}`;
 
+    // lite 모델은 thinking 미지원, 나머지는 thinkingBudget:0으로 비활성화
+    const supportsThinking = !model.includes('lite') && !model.includes('flash-8b');
+
     const response = await ai.models.generateContent({
         model,
         contents: prompt,
@@ -22,7 +25,7 @@ export const geminiTranslateBatch: TranslateBatchFn = async (
                 type: Type.ARRAY,
                 items: { type: Type.STRING },
             },
-            thinkingConfig: { thinkingBudget: 0 }, // 번역 작업엔 thinking 불필요, TPM 절약
+            ...(supportsThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
         },
     });
 
