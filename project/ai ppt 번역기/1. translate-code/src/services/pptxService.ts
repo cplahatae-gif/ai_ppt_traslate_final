@@ -373,6 +373,25 @@ const LINE_HEIGHT_RATIO = 1.22;
 
 const stripTags = (s: string): string => s.replace(/<[^>]*>/g, '');
 
+/**
+ * 도형 크기와 폰트 크기로 박스가 수용 가능한 글자 수를 추정합니다.
+ * @param extent 도형 크기 (EMU)
+ * @param fontSzHundredths 폰트 크기 (1/100pt, 예: 1100 = 11pt)
+ */
+export const estimateCapacityChars = (
+    extent: { cx: number; cy: number },
+    fontSzHundredths: number,
+): number | null => {
+    const fontPt = fontSzHundredths / 100;
+    if (fontPt <= 0) return null;
+    const usableW = extent.cx / EMU_PER_PT - INSET_X_PT;
+    const usableH = extent.cy / EMU_PER_PT - INSET_Y_PT;
+    if (usableW <= 0 || usableH <= 0) return null;
+    const charsPerLine = Math.floor(usableW / (CHAR_WIDTH_RATIO * fontPt));
+    const lines = Math.max(1, Math.floor(usableH / (LINE_HEIGHT_RATIO * fontPt)));
+    return Math.max(1, charsPerLine * lines);
+};
+
 const findAncestorByLocalName = (node: Element, localName: string): Element | null => {
     let cur: Element | null = node.parentElement;
     while (cur) {
@@ -383,7 +402,7 @@ const findAncestorByLocalName = (node: Element, localName: string): Element | nu
 };
 
 /** 도형(p:sp)의 spPr > xfrm > ext에서 크기(EMU)를 읽습니다. */
-const getShapeExtent = (txBody: Element): { cx: number; cy: number } | null => {
+export const getShapeExtent = (txBody: Element): { cx: number; cy: number } | null => {
     const sp = txBody.parentElement;
     if (!sp) return null;
     const spPr = Array.from(sp.children).find(c => c.localName === 'spPr' || c.tagName.endsWith(':spPr'));
@@ -444,13 +463,8 @@ const planBodyScaling = (
     }
 
     if (extent && maxSz) {
-        const fontPt = maxSz / 100;
-        const usableW = extent.cx / EMU_PER_PT - INSET_X_PT;
-        const usableH = extent.cy / EMU_PER_PT - INSET_Y_PT;
-        if (usableW > 0 && usableH > 0) {
-            const charsPerLine = Math.floor(usableW / (CHAR_WIDTH_RATIO * fontPt));
-            const lines = Math.max(1, Math.floor(usableH / (LINE_HEIGHT_RATIO * fontPt)));
-            const capacity = Math.max(1, charsPerLine * lines);
+        const capacity = estimateCapacityChars(extent, maxSz);
+        if (capacity !== null) {
             if (totalTrans > capacity) {
                 // 폰트를 s배 하면 수용량은 1/s² → s = √(용량/글자수)
                 const s = Math.max(0.6, Math.min(1.0, Math.sqrt(capacity / totalTrans)));

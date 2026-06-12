@@ -11,6 +11,8 @@ import { DownloadIcon } from './components/icons';
 import { tokenManager } from './services/TokenManager';
 import { qualityService } from './services/QualityService';
 import { QualityReport } from './components/QualityReport';
+import { auditDocument, AuditReport } from './services/documentAudit';
+import { AuditReportCard } from './components/AuditReportCard';
 import { QualityResult } from './types';
 import { ProviderId, getProviderConfig, getApiKeyFromStorage, saveApiKeyToStorage } from './services/modelCatalog';
 
@@ -49,6 +51,7 @@ const App: React.FC = () => {
   const [extractedCount, setExtractedCount] = useState(0);
 
   const [qualityResult, setQualityResult] = useState<QualityResult | null>(null);
+  const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
 
   const originalTextsRef = React.useRef<string[]>([]);
   const translatedTextsRef = React.useRef<string[]>([]);
@@ -109,6 +112,7 @@ const App: React.FC = () => {
     setEstimatedTokens(0);
     setExtractedCount(0);
     setQualityResult(null);
+    setAuditReport(null);
     if (downloadUrl) URL.revokeObjectURL(downloadUrl);
     setDownloadUrl(null);
   };
@@ -123,6 +127,7 @@ const App: React.FC = () => {
     setProgressMessage('파일 구조 분석 중...');
     setError(null);
     setQualityResult(null);
+    setAuditReport(null);
     setDownloadUrl(null);
 
     try {
@@ -183,7 +188,15 @@ const App: React.FC = () => {
       const translatedBlob = await replaceTextInPptx(file, translatedItems);
 
       setStatus('verifying');
-      setProgressMessage('AI 품질 분석 진행 중...');
+      setProgressMessage('문서 감사 및 AI 품질 분석 진행 중...');
+
+      // 문서 감사 (결정적): 색상 적용·한글 잔존·박스 넘침을 결과물 XML에서 직접 검사
+      try {
+        const audit = await auditDocument(translatedBlob, translatedItems, startPage, endPage);
+        setAuditReport(audit);
+      } catch (auditErr) {
+        console.warn('문서 감사 실패 (번역 결과에는 영향 없음):', auditErr);
+      }
 
       const [qResponse] = await Promise.all([
         qualityService.verify('local', originalTexts, translatedTexts),
@@ -336,6 +349,8 @@ const App: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {auditReport && <AuditReportCard report={auditReport} />}
 
               {qualityResult && (
                 <QualityReport
