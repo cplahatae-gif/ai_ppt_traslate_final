@@ -704,6 +704,7 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
 
         // ---- 2단계: txBody별 축소 계획 수립 ----
         const plans = new Map<Element, BodyPlan>();
+        const familyKeys = new Map<Element, string>();
         for (const group of groups.values()) {
             const extent = group.isTableCell ? null : getShapeExtent(group.txBody);
             const maxSz = getMaxFontSize(group.pNodes);
@@ -711,6 +712,26 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
             plans.set(group.txBody, planBodyScaling(
                 group.isTableCell, group.totalOrig, group.paraTexts, extent, maxSz, group.cellColWPt, insets,
             ));
+            if (!group.isTableCell && extent && maxSz) {
+                familyKeys.set(group.txBody, `${extent.cx}x${extent.cy}#${maxSz}`);
+            }
+        }
+
+        // ---- 2.5단계: 가족(같은 크기·같은 폰트) 단위 축소율 통일 ----
+        // 나란히 놓인 형제 박스들이 제각각 줄어들면 들쭉날쭉해 보임 → 최소값으로 통일
+        const familyScales = new Map<string, number>();
+        for (const [txBody, key] of familyKeys) {
+            const fs = plans.get(txBody)!.fontScale;
+            familyScales.set(key, Math.min(familyScales.get(key) ?? 100000, fs));
+        }
+        const familySizes = new Map<string, number>();
+        for (const key of familyKeys.values()) {
+            familySizes.set(key, (familySizes.get(key) ?? 0) + 1);
+        }
+        for (const [txBody, key] of familyKeys) {
+            if ((familySizes.get(key) ?? 0) >= 2) {
+                plans.get(txBody)!.fontScale = familyScales.get(key)!;
+            }
         }
 
         // ---- 3단계: 문단 치환 ----

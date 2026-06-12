@@ -198,6 +198,36 @@ describe('오버플로우 축소', () => {
         expect(xml).toContain('sz="900"');
     });
 
+    it('같은 크기·같은 폰트의 형제 박스는 축소율이 최소값으로 통일된다 (들쭉날쭉 방지)', async () => {
+        const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:cSld><p:spTree>
+<p:sp><p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1066800" cy="330200"/></a:xfrm></p:spPr>
+<p:txBody><a:bodyPr/><a:p><a:r><a:rPr lang="ko-KR" sz="1600"/><a:t>리더십</a:t></a:r></a:p></p:txBody></p:sp>
+<p:sp><p:spPr><a:xfrm><a:off x="0" y="400000"/><a:ext cx="1066800" cy="330200"/></a:xfrm></p:spPr>
+<p:txBody><a:bodyPr/><a:p><a:r><a:rPr lang="ko-KR" sz="1600"/><a:t>위험관리</a:t></a:r></a:p></p:txBody></p:sp>
+</p:spTree></p:cSld>
+</p:sld>`;
+        const zip = new JSZip();
+        zip.file('ppt/slides/slide1.xml', xml);
+        const file = (await zip.generateAsync({ type: 'uint8array' })) as unknown as File;
+
+        const items = await extractTextFromPptx(file);
+        // 하나는 짧게(축소 불필요 수준), 하나는 길게(많이 축소 필요)
+        const translated: TextItem[] = [
+            { ...items[0], text: 'Leadership', originalLength: 3 },
+            { ...items[1], text: 'Risk management and improvement', originalLength: 4 },
+        ];
+
+        const blob = await replaceTextInPptx(file, translated);
+        const outXml = await readSlide(blob);
+        const scales = [...outXml.matchAll(/fontScale="(\d+)"/g)].map(m => parseInt(m[1]));
+        // 두 박스 모두 같은 축소율 (가족 최소값으로 통일)
+        expect(scales.length).toBe(2);
+        expect(scales[0]).toBe(scales[1]);
+        expect(scales[0]).toBeLessThan(100000);
+    });
+
     it('spAutoFit 박스는 텍스트 확장 시 normAutofit(크기고정+축소)으로 교체된다', async () => {
         // spAutoFit = 도형이 텍스트에 맞춰 자람 → 영문 확장 시 주변 레이아웃 침범
         const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

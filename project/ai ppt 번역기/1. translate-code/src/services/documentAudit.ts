@@ -288,6 +288,9 @@ export const remediateOverflows = async (
         const allParagraphs = Array.from(doc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'));
         let changed = false;
 
+        // 가족(같은 크기·같은 폰트) 단위 축소율 통일을 위해 1차 수집 후 일괄 적용
+        const fontFixes: { txBody: Element; sFit: number; key: string }[] = [];
+
         const txBodies = Array.from(doc.getElementsByTagName('*')).filter(el => el.localName === 'txBody');
         for (const txBody of txBodies) {
             if (txBody.parentElement?.localName === 'tc') continue;
@@ -339,9 +342,8 @@ export const remediateOverflows = async (
 
             const sFit = solveFitScale(paraTexts, fontPt, usableW, usableH, LINE_HEIGHT_RATIO, MIN_FONT_SCALE_SAFE);
             if (sFit !== null) {
-                // 1단계: 글자크기 축소만으로 해결 (≥ 0.6)
-                setAutofit(doc, txBody as Element, sFit);
-                boxesAdjusted++; changed = true;
+                // 1단계: 글자크기 축소만으로 해결 (≥ 0.6) — 가족 통일 위해 일괄 적용으로 보류
+                fontFixes.push({ txBody: txBody as Element, sFit, key: `${extent.cx}x${extent.cy}#${maxSz}` });
             } else if (canGrow(MAX_BOX_GROWTH) && fitsAt(MIN_FONT_SCALE_SAFE, MAX_BOX_GROWTH)) {
                 // 2단계: 박스 확대(+30% 이내 최소량) + 글자 0.6
                 let g = 1.05;
@@ -367,6 +369,19 @@ export const remediateOverflows = async (
                     if (idx !== undefined) shortenIndexes.add(idx);
                 }
             }
+        }
+
+        // 글자 축소 건은 가족 단위로 최소값 통일 후 일괄 적용 (들쭉날쭉 방지)
+        if (fontFixes.length > 0) {
+            const familyMin = new Map<string, number>();
+            for (const f of fontFixes) {
+                familyMin.set(f.key, Math.min(familyMin.get(f.key) ?? 1, f.sFit));
+            }
+            for (const f of fontFixes) {
+                setAutofit(doc, f.txBody, familyMin.get(f.key)!);
+                boxesAdjusted++;
+            }
+            changed = true;
         }
 
         if (changed) {
