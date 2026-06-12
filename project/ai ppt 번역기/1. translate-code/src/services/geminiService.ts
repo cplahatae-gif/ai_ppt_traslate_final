@@ -118,6 +118,7 @@ export const testApiKey = async (apiKey: string): Promise<{
             contents: 'Say "API key is valid" in one word: Valid',
             config: {
                 maxOutputTokens: 10,
+                thinkingConfig: { thinkingBudget: 0 },
             },
         });
 

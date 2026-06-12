@@ -22,6 +22,7 @@ export const geminiTranslateBatch: TranslateBatchFn = async (
                 type: Type.ARRAY,
                 items: { type: Type.STRING },
             },
+            thinkingConfig: { thinkingBudget: 0 }, // 번역 작업엔 thinking 불필요, TPM 절약
         },
     });
 
