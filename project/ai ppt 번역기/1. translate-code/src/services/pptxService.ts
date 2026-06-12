@@ -481,6 +481,21 @@ const planBodyScaling = (
 };
 
 /**
+ * 영어 단어 단위 줄바꿈 강제.
+ * 한국어 환경에서 만든 텍스트박스는 latinLnBrk="1"(단어 중간 잘림 허용)이
+ * 기본이라, 영문 번역 후 단어가 중간에서 끊겨 가독성을 해침.
+ */
+const ensureLatinWordWrap = (xmlDoc: Document, pNode: Element): void => {
+    let pPr = Array.from(pNode.childNodes)
+        .find(n => n.nodeName === 'a:pPr') as Element | undefined;
+    if (!pPr) {
+        pPr = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:pPr');
+        pNode.insertBefore(pPr, pNode.firstChild); // pPr은 a:p의 첫 자식이어야 함
+    }
+    pPr.setAttribute('latinLnBrk', '0');
+};
+
+/**
  * P3 Fix: 영문 번역 시 줄간격을 한 단계 낮춤 (1.5→1.2, 1.2→1.0)
  * 한국어 넓은 줄간격이 영문 번역 후 텍스트 박스 초과를 유발
  */
@@ -597,6 +612,9 @@ export const replaceTextInPptx = async (originalFile: File, translatedItems: Tex
 
             const group = itemBody.get(item);
             const plan = group ? plans.get(group.txBody) : undefined;
+
+            // 영문은 단어 단위로 줄바꿈 (한국어 텍스트박스의 단어 중간 잘림 설정 해제)
+            ensureLatinWordWrap(xmlDoc, pNode);
 
             // 줄간격 축소는 실제로 확장된 경우에만
             if (plan && plan.ratio > 1.2) {

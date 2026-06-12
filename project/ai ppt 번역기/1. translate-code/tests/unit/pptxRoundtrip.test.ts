@@ -117,6 +117,21 @@ describe('색상 보존', () => {
         expect(directFills.length).toBe(0);
     });
 
+    it('번역 문단에 영어 단어 단위 줄바꿈(latinLnBrk="0")이 강제된다', async () => {
+        const file = await buildPptx();
+        const items = await extractTextFromPptx(file);
+        const translated: TextItem[] = items.map(it => ({
+            ...it,
+            text: 'Translated English text',
+            originalLength: 10,
+        }));
+
+        const blob = await replaceTextInPptx(file, translated);
+        const xml = await readSlide(blob);
+        expect(xml).toContain('latinLnBrk="0"');
+        expect(xml).not.toContain('latinLnBrk="1"');
+    });
+
     it('명시적 b="0"이 보존된다', async () => {
         const file = await buildPptx();
         const items = await extractTextFromPptx(file);
