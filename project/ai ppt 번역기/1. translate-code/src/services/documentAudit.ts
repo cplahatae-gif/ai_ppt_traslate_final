@@ -20,6 +20,8 @@ export interface AuditIssue {
     type: AuditIssueType;
     severity: 'high' | 'medium' | 'low';
     detail: string;
+    /** 수정 루프에서 재번역할 수 있도록 translatedItems 기준 인덱스를 첨부 */
+    itemIndexes?: number[];
 }
 
 export interface AuditReport {
@@ -40,14 +42,17 @@ export const auditDocument = async (
 ): Promise<AuditReport> => {
     const issues: AuditIssue[] = [];
 
+    // translatedItems 역참조용: 문단 키 → 항목 인덱스
+    const itemIndexByKey = new Map(translatedItems.map((it, idx) => [`${it.slidePath}#${it.paragraphIndex}`, idx]));
+
     // ---- 1·2. 결과물 재추출 후 색상/한글 검사 ----
     // 추출 병합 규칙이 동일하므로 색상 토큰을 "집합"으로 비교 가능
     const outItems = await extractTextFromPptx(translatedBlob as unknown as File, startSlide, endSlide);
     const outMap = new Map(outItems.map(i => [`${i.slidePath}#${i.paragraphIndex}`, i]));
 
-    for (const item of translatedItems) {
+    translatedItems.forEach((item, idx) => {
         const expected = [...new Set(extractColorTokens(item.text))];
-        if (expected.length === 0) continue;
+        if (expected.length === 0) return;
         const out = outMap.get(`${item.slidePath}#${item.paragraphIndex}`);
         const actual = new Set(extractColorTokens(out?.text ?? ''));
         const missing = expected.filter(t => !actual.has(t));
@@ -57,18 +62,21 @@ export const auditDocument = async (
                 type: 'color-loss',
                 severity: 'high',
                 detail: `색상 미적용 ${missing.map(t => `<color:${t}>`).join(', ')} — "${stripTags(item.text).trim().slice(0, 30)}"`,
+                itemIndexes: [idx],
             });
         }
-    }
+    });
 
     for (const out of outItems) {
         const plain = stripTags(out.text).trim();
         if (KOREAN_RE.test(plain)) {
+            const idx = itemIndexByKey.get(`${out.slidePath}#${out.paragraphIndex}`);
             issues.push({
                 slideNumber: out.slideNumber,
                 type: 'untranslated',
                 severity: 'medium',
                 detail: `한글 잔존 — "${plain.slice(0, 40)}"`,
+                itemIndexes: idx !== undefined ? [idx] : undefined,
             });
         }
     }
@@ -87,9 +95,11 @@ export const auditDocument = async (
         if (position < startSlide || position > endSlide) continue;
         checkedSlides++;
 
-        const slideNumber = parseInt(slidePaths[i].match(/slide(\d+)\.xml/)![1]);
-        const xml = await zip.file(slidePaths[i])!.async('string');
+        const slidePath = slidePaths[i];
+        const slideNumber = parseInt(slidePath.match(/slide(\d+)\.xml/)![1]);
+        const xml = await zip.file(slidePath)!.async('string');
         const doc = parser.parseFromString(xml, 'application/xml');
+        const allParagraphs = Array.from(doc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'));
 
         const txBodies = Array.from(doc.getElementsByTagName('*')).filter(el => el.localName === 'txBody');
         for (const txBody of txBodies) {
@@ -117,11 +127,16 @@ export const auditDocument = async (
 
             const overflowRatio = text.length / capacity;
             if (overflowRatio > 1.3) {
+                // 이 txBody에 속한 번역 항목 인덱스 수집 (축약 재번역 대상)
+                const itemIndexes = Array.from(txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'))
+                    .map(p => itemIndexByKey.get(`${slidePath}#${allParagraphs.indexOf(p)}`))
+                    .filter((v): v is number => v !== undefined);
                 issues.push({
                     slideNumber,
                     type: 'overflow',
                     severity: overflowRatio > 1.6 ? 'high' : 'medium',
                     detail: `박스 넘침 가능 (용량 대비 ${Math.round(overflowRatio * 100)}%) — "${text.trim().slice(0, 30)}"`,
+                    itemIndexes: itemIndexes.length > 0 ? itemIndexes : undefined,
                 });
             }
         }
@@ -136,4 +151,180 @@ export const auditDocument = async (
         overflowCount: issues.filter(i => i.type === 'overflow').length,
         issues,
     };
+};
+
+// ============================================================
+// 오버플로우 보정 (3단계 병행: 글자크기 → 박스크기 → 축약 재번역)
+// ============================================================
+
+export interface RemediationResult {
+    blob: Blob;
+    /** 글자크기/박스크기 조정으로 해결한 도형 수 */
+    boxesAdjusted: number;
+    /** 조정만으로 부족해 축약 재번역이 필요한 항목 인덱스 */
+    shortenItemIndexes: number[];
+}
+
+const MIN_FONT_SCALE_SAFE = 0.6;   // 1차 글자 축소 하한 (가독성 안전선)
+const MIN_FONT_SCALE_HARD = 0.5;   // 박스 확대와 병행할 때의 최저 하한
+const MAX_BOX_GROWTH = 1.3;        // 박스 높이 최대 확대율 (+30%)
+
+const findAncestorGroup = (node: Element): boolean => {
+    let cur: Element | null = node.parentElement;
+    while (cur) {
+        if (cur.localName === 'grpSp') return true;
+        cur = cur.parentElement;
+    }
+    return false;
+};
+
+const setAutofit = (xmlDoc: Document, txBody: Element, scale: number): void => {
+    const bodyPr = txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'bodyPr')[0];
+    if (!bodyPr) return;
+    if (bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'spAutoFit')[0]) return;
+    const noAutofit = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'noAutofit')[0];
+    if (noAutofit) bodyPr.removeChild(noAutofit);
+
+    const fontScale = String(Math.round(scale * 100000));
+    const lnSpcReduction = scale < 0.8 ? '10000' : '0';
+    const existing = bodyPr.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'normAutofit')[0];
+    if (existing) {
+        existing.setAttribute('fontScale', fontScale);
+        existing.setAttribute('lnSpcReduction', lnSpcReduction);
+    } else {
+        const normAutofit = xmlDoc.createElementNS(DRAWINGML_NAMESPACE, 'a:normAutofit');
+        normAutofit.setAttribute('fontScale', fontScale);
+        normAutofit.setAttribute('lnSpcReduction', lnSpcReduction);
+        bodyPr.appendChild(normAutofit);
+    }
+};
+
+/**
+ * 박스 넘침을 단계적으로 보정합니다. (텍스트 변경 없음 — 오역 리스크 0)
+ *
+ * 1단계: 글자크기 축소 (fontScale ≥ 0.6 으로 해결되면 그것만)
+ * 2단계: 박스 높이 확대 (그룹 밖 + 슬라이드 하단 경계 내, 최대 +30%) + 글자 0.6
+ * 3단계: 박스 +30% + 글자 0.5 까지 병행
+ * 그래도 부족하면 → 축약 재번역 대상으로 반환 (호출 측에서 처리)
+ */
+export const remediateOverflows = async (
+    translatedBlob: Blob,
+    translatedItems: TextItem[],
+    startSlide: number,
+    endSlide: number,
+): Promise<RemediationResult> => {
+    const zip = await JSZip.loadAsync(translatedBlob as unknown as Blob);
+    const parser = new DOMParser();
+    const serializer = new XMLSerializer();
+
+    // 슬라이드 높이 (박스 확대 시 하단 경계 확인용)
+    let slideCy = 6858000;
+    const presXml = await zip.file('ppt/presentation.xml')?.async('string');
+    if (presXml) {
+        const m = presXml.match(/<p:sldSz[^>]*cy="(\d+)"/);
+        if (m) slideCy = parseInt(m[1]);
+    }
+
+    const itemIndexByKey = new Map(translatedItems.map((it, idx) => [`${it.slidePath}#${it.paragraphIndex}`, idx]));
+    const slidePaths = Object.keys(zip.files)
+        .filter(p => p.match(/^ppt\/slides\/slide(\d+)\.xml$/))
+        .sort((a, b) =>
+            parseInt(a.match(/slide(\d+)\.xml/)![1]) - parseInt(b.match(/slide(\d+)\.xml/)![1]));
+
+    let boxesAdjusted = 0;
+    const shortenIndexes = new Set<number>();
+
+    for (let i = 0; i < slidePaths.length; i++) {
+        const position = i + 1;
+        if (position < startSlide || position > endSlide) continue;
+
+        const slidePath = slidePaths[i];
+        const xml = await zip.file(slidePath)!.async('string');
+        const doc = parser.parseFromString(xml, 'application/xml');
+        const allParagraphs = Array.from(doc.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'));
+        let changed = false;
+
+        const txBodies = Array.from(doc.getElementsByTagName('*')).filter(el => el.localName === 'txBody');
+        for (const txBody of txBodies) {
+            if (txBody.parentElement?.localName === 'tc') continue;
+
+            const text = Array.from(txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 't'))
+                .map(t => t.textContent || '').join('');
+            if (text.trim().length < 8) continue;
+
+            const extent = getShapeExtent(txBody as Element);
+            if (!extent) continue;
+
+            let maxSz = 0;
+            for (const rPr of Array.from(txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'rPr'))) {
+                const sz = parseInt(rPr.getAttribute('sz') || '0');
+                if (sz > maxSz) maxSz = sz;
+            }
+            if (maxSz === 0) continue;
+
+            // 원본 폰트 크기 기준 용량 (fontScale 미적용 상태)
+            const fullCapacity = estimateCapacityChars(extent, maxSz);
+            if (fullCapacity === null) continue;
+
+            const chars = text.length;
+            if (chars <= fullCapacity) continue; // 원본 크기로도 수용 — 보정 불필요
+
+            const inGroup = findAncestorGroup(txBody as Element);
+            const sFit = Math.sqrt(fullCapacity / chars);
+
+            // 박스 확대 가능 여부 (그룹 밖 + 슬라이드 하단 경계 내)
+            const sp = txBody.parentElement!;
+            const spPr = Array.from(sp.children).find(c => c.localName === 'spPr');
+            const xfrm = spPr?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'xfrm')[0];
+            const off = xfrm?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'off')[0];
+            const ext = xfrm?.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'ext')[0];
+            const offY = off ? parseInt(off.getAttribute('y') || '0') : null;
+            const canGrow = (g: number): boolean =>
+                !inGroup && !!ext && offY !== null && (offY + extent.cy * g) <= slideCy * 1.02;
+            const grow = (g: number) => {
+                ext!.setAttribute('cy', String(Math.round(extent.cy * g)));
+            };
+
+            if (sFit >= MIN_FONT_SCALE_SAFE) {
+                // 1단계: 글자크기 축소만으로 해결
+                setAutofit(doc, txBody as Element, sFit);
+                boxesAdjusted++; changed = true;
+            } else {
+                const gNeeded = Math.min(chars * MIN_FONT_SCALE_SAFE ** 2 / fullCapacity, MAX_BOX_GROWTH);
+                if (canGrow(gNeeded) && chars <= fullCapacity * gNeeded / MIN_FONT_SCALE_SAFE ** 2) {
+                    // 2단계: 박스 확대 + 글자 0.6
+                    grow(gNeeded);
+                    setAutofit(doc, txBody as Element, MIN_FONT_SCALE_SAFE);
+                    boxesAdjusted++; changed = true;
+                } else if (canGrow(MAX_BOX_GROWTH) && chars <= fullCapacity * MAX_BOX_GROWTH / MIN_FONT_SCALE_HARD ** 2) {
+                    // 3단계: 박스 +30% + 글자 0.5
+                    grow(MAX_BOX_GROWTH);
+                    setAutofit(doc, txBody as Element, MIN_FONT_SCALE_HARD);
+                    boxesAdjusted++; changed = true;
+                } else if (inGroup && chars <= fullCapacity / MIN_FONT_SCALE_HARD ** 2) {
+                    // 그룹 내부: 박스 확대 불가 → 글자 0.5 까지만
+                    setAutofit(doc, txBody as Element, Math.max(sFit, MIN_FONT_SCALE_HARD));
+                    boxesAdjusted++; changed = true;
+                } else {
+                    // 조정만으로 부족 → 축약 재번역 필요
+                    setAutofit(doc, txBody as Element, MIN_FONT_SCALE_HARD);
+                    changed = true;
+                    for (const p of Array.from(txBody.getElementsByTagNameNS(DRAWINGML_NAMESPACE, 'p'))) {
+                        const idx = itemIndexByKey.get(`${slidePath}#${allParagraphs.indexOf(p)}`);
+                        if (idx !== undefined) shortenIndexes.add(idx);
+                    }
+                }
+            }
+        }
+
+        if (changed) {
+            zip.file(slidePath, serializer.serializeToString(doc));
+        }
+    }
+
+    const blob = await zip.generateAsync({
+        type: 'blob',
+        mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    });
+    return { blob, boxesAdjusted, shortenItemIndexes: [...shortenIndexes].sort((a, b) => a - b) };
 };

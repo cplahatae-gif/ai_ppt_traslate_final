@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
 import { extractTextFromPptx, replaceTextInPptx, TextItem } from '@src/services/pptxService';
-import { auditDocument } from '@src/services/documentAudit';
+import { auditDocument, remediateOverflows } from '@src/services/documentAudit';
 
 const SLIDE_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
@@ -81,7 +81,7 @@ describe('auditDocument', () => {
         expect(report.issues.find(i => i.type === 'untranslated')?.detail).toContain('문단');
     });
 
-    it('축소 후에도 박스 용량을 크게 초과하면 overflow 보고', async () => {
+    it('축소 후에도 박스 용량을 크게 초과하면 overflow 보고 (항목 인덱스 포함)', async () => {
         const file = await buildPptx();
         const huge = 'A very long English sentence that absolutely will not fit in this box. '.repeat(20);
         const { blob, items } = await translate(file, [
@@ -94,5 +94,64 @@ describe('auditDocument', () => {
         expect(report.overflowCount).toBeGreaterThanOrEqual(1);
         const overflow = report.issues.find(i => i.type === 'overflow')!;
         expect(overflow.severity).toBe('high');
+        expect(overflow.itemIndexes).toContain(0);
+    });
+});
+
+describe('remediateOverflows (3단계 보정)', () => {
+    const readSlide = async (blob: Blob): Promise<string> => {
+        const buf = await new Promise<ArrayBuffer>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as ArrayBuffer);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsArrayBuffer(blob);
+        });
+        const zip = await JSZip.loadAsync(buf);
+        return zip.file('ppt/slides/slide1.xml')!.async('string');
+    };
+
+    it('가벼운 초과는 글자크기 축소만으로 해결 (1단계)', async () => {
+        const file = await buildPptx();
+        // 용량(약 144자)의 2배 → s_fit ≈ 0.71 ≥ 0.6 → 글자 축소만
+        const mild = 'This sentence is moderately long for the box capacity. '.repeat(5);
+        const { blob, items } = await translate(file, [mild, 'Second paragraph']);
+
+        const rem = await remediateOverflows(blob, items, 1, 1);
+
+        expect(rem.boxesAdjusted).toBe(1);
+        expect(rem.shortenItemIndexes).toEqual([]);
+        const xml = await readSlide(rem.blob);
+        const m = xml.match(/fontScale="(\d+)"/);
+        expect(m).not.toBeNull();
+        expect(parseInt(m![1])).toBeGreaterThanOrEqual(60000);
+        // 박스 크기는 그대로
+        expect(xml).toContain('cy="1080000"');
+    });
+
+    it('심한 초과는 박스 확대 + 글자 축소 병행 (2~3단계)', async () => {
+        const file = await buildPptx();
+        // 용량의 약 4배 → 글자 0.6 으로 부족 → 박스 확대 병행
+        const heavy = 'A considerably longer English sentence that requires more remediation. '.repeat(8);
+        const { blob, items } = await translate(file, [heavy, 'Second paragraph']);
+
+        const rem = await remediateOverflows(blob, items, 1, 1);
+
+        expect(rem.boxesAdjusted).toBe(1);
+        expect(rem.shortenItemIndexes).toEqual([]);
+        const xml = await readSlide(rem.blob);
+        // 박스 높이가 커졌는지 (원본 1080000)
+        const cy = parseInt(xml.match(/<a:ext cx="3600000" cy="(\d+)"/)![1]);
+        expect(cy).toBeGreaterThan(1080000);
+    });
+
+    it('극단적 초과는 축약 재번역 대상으로 반환', async () => {
+        const file = await buildPptx();
+        // 용량의 10배 이상 → 보정 한도 초과 → 축약 필요
+        const extreme = 'A very long English sentence that absolutely will not fit in this box. '.repeat(20);
+        const { blob, items } = await translate(file, [extreme, 'Second paragraph']);
+
+        const rem = await remediateOverflows(blob, items, 1, 1);
+
+        expect(rem.shortenItemIndexes).toContain(0);
     });
 });

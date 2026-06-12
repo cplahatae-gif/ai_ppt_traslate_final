@@ -10,7 +10,7 @@ import { DownloadIcon } from './components/icons';
 
 import { tokenManager } from './services/TokenManager';
 import { qualityService } from './services/QualityService';
-import { auditDocument, AuditReport } from './services/documentAudit';
+import { auditDocument, remediateOverflows, AuditReport } from './services/documentAudit';
 import { AuditReportCard } from './components/AuditReportCard';
 import { validateTagPreservation } from './services/aiProvider';
 import { ProviderId, getProviderConfig, getApiKeyFromStorage, saveApiKeyToStorage } from './services/modelCatalog';
@@ -20,6 +20,8 @@ type Status = 'idle' | 'analyzing' | 'translating' | 'fixing' | 'building' | 've
 interface FixSummary {
     retranslated: number;
     suggestionsApplied: number;
+    boxesAdjusted: number;
+    shortened: number;
 }
 
 const App: React.FC = () => {
@@ -234,30 +236,76 @@ const App: React.FC = () => {
         console.warn('품질 분석 실패 — 건너뜀:', qErr);
       }
 
-      setFixSummary({ retranslated, suggestionsApplied });
-
-      // ---- 5. 최종 빌드 ----
+      // ---- 5. 빌드 ----
       setStatus('building');
-      setProgressMessage('최종 PPTX 파일 생성 중...');
+      setProgressMessage('PPTX 파일 생성 중...');
 
-      const translatedItems: TextItem[] = textItems.map((item, index) => ({
+      const buildItems = (): TextItem[] => textItems.map((item, index) => ({
         ...item,
         text: translatedTexts[index],
         originalLength: originalTexts[index].replace(/<[^>]*>/g, '').length
       }));
-      const translatedBlob = await replaceTextInPptx(file, translatedItems);
+      let finalItems = buildItems();
+      let finalBlob = await replaceTextInPptx(file, finalItems);
 
-      // ---- 6. 최종 문서 감사 ----
+      // ---- 6. 오버플로우 보정: 글자크기 → 박스크기 → 축약 재번역 병행 ----
+      let boxesAdjusted = 0;
+      let shortened = 0;
+      try {
+        setStatus('fixing');
+        setProgressMessage('박스 넘침 보정 중 (글자크기·박스크기 조정)...');
+        const rem = await remediateOverflows(finalBlob, finalItems, startPage, endPage);
+        finalBlob = rem.blob;
+        boxesAdjusted = rem.boxesAdjusted;
+
+        // 조정만으로 부족한 박스만 축약 재번역 (최후 수단)
+        if (rem.shortenItemIndexes.length > 0) {
+          setProgressMessage(`심한 넘침 ${rem.shortenItemIndexes.length}건 축약 재번역 중...`);
+          const shortenPrompt = combinedPrompt +
+            '\n\n# Length Constraint (CRITICAL)\nThese texts overflow their shapes even after resizing. Produce the SHORTEST faithful translation: telegraphic style, drop articles, use standard abbreviations. Never change the meaning. Preserve ALL tags exactly.';
+          const subset = rem.shortenItemIndexes.map(i => originalTexts[i]);
+          const shortTexts = await translateTexts(subset, undefined, shortenPrompt, glossary, 20, apiKey, provider, model);
+
+          rem.shortenItemIndexes.forEach((origIdx, k) => {
+            const candidate = shortTexts[k];
+            if (!candidate) return;
+            const candPlain = candidate.replace(/<[^>]*>/g, '');
+            const currPlain = (translatedTexts[origIdx] ?? '').replace(/<[^>]*>/g, '');
+            const safe = candPlain.length < currPlain.length
+              && !/[가-힣]/.test(candPlain)
+              && validateTagPreservation([originalTexts[origIdx]], [candidate]);
+            if (safe) {
+              translatedTexts[origIdx] = candidate;
+              shortened++;
+            }
+          });
+
+          if (shortened > 0) {
+            setProgressMessage('축약 반영하여 재생성 중...');
+            finalItems = buildItems();
+            const blob2 = await replaceTextInPptx(file, finalItems);
+            const rem2 = await remediateOverflows(blob2, finalItems, startPage, endPage);
+            finalBlob = rem2.blob;
+            boxesAdjusted = rem2.boxesAdjusted;
+          }
+        }
+      } catch (remErr) {
+        console.warn('오버플로우 보정 실패 — 보정 전 결과 사용:', remErr);
+      }
+
+      setFixSummary({ retranslated, suggestionsApplied, boxesAdjusted, shortened });
+
+      // ---- 7. 최종 문서 감사 ----
       setStatus('verifying');
       setProgressMessage('최종 문서 감사 중...');
       try {
-        const audit = await auditDocument(translatedBlob, translatedItems, startPage, endPage);
+        const audit = await auditDocument(finalBlob, finalItems, startPage, endPage);
         setAuditReport(audit);
       } catch (auditErr) {
         console.warn('문서 감사 실패 (번역 결과에는 영향 없음):', auditErr);
       }
 
-      const url = URL.createObjectURL(translatedBlob);
+      const url = URL.createObjectURL(finalBlob);
       setDownloadUrl(url);
       setStatus('done');
       setProgressMessage(`${startPage}~${endPage}페이지 번역 완료!`);
@@ -348,9 +396,9 @@ const App: React.FC = () => {
                 </div>
                 <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-white">번역이 완료되었습니다!</h2>
                 <p className="text-slate-500 mb-2">감사·품질 분석·자동 수정을 거친 최종본입니다.</p>
-                {fixSummary && (fixSummary.retranslated > 0 || fixSummary.suggestionsApplied > 0) ? (
+                {fixSummary && (fixSummary.retranslated > 0 || fixSummary.suggestionsApplied > 0 || fixSummary.boxesAdjusted > 0 || fixSummary.shortened > 0) ? (
                   <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 inline-block mb-6">
-                    자동 수정 적용: 재번역 {fixSummary.retranslated}건 · 표현 개선 {fixSummary.suggestionsApplied}건
+                    자동 수정 적용: 재번역 {fixSummary.retranslated}건 · 표현 개선 {fixSummary.suggestionsApplied}건 · 글자/박스 크기 보정 {fixSummary.boxesAdjusted}건 · 축약 {fixSummary.shortened}건
                   </p>
                 ) : (
                   <p className="text-xs text-slate-400 mb-6">자동 수정이 필요한 항목이 없었습니다.</p>
