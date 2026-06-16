@@ -16,6 +16,12 @@ const isRateLimitError = (error: unknown): boolean => {
 const normalizeTranslated = (texts: string[]): string[] =>
     texts.map(t => (t ?? '').replace(/\s*\r?\n\s*/g, ' ').trim());
 
+// 항목 개수 불일치 (LLM이 배치 일부를 병합/누락) — 같은 배치 재시도 대신 분할 폴백으로 처리
+const isCountMismatchError = (error: unknown): boolean => {
+    const msg = error instanceof Error ? error.message : String(error);
+    return /items,\s*received/i.test(msg);
+};
+
 // 재시도해도 해결되지 않는 오류 (잘못된 키, 없는 모델) — 즉시 실패
 const isNonRetryableError = (error: unknown): boolean => {
     const msg = error instanceof Error ? error.message : String(error);
@@ -75,6 +81,8 @@ export const translateTexts = async (
             } catch (error) {
                 lastError = categorizeError(error);
                 if (isNonRetryableError(error)) throw lastError;
+                // 개수 불일치는 같은 배치를 다시 보내도 잘 안 고쳐짐 → 즉시 분할 폴백으로 위임
+                if (isCountMismatchError(error)) throw lastError;
                 if (attempt < MAX_RETRIES) {
                     const delay = isRateLimitError(error) ? 65000 : 2000 * attempt;
                     await new Promise(resolve => setTimeout(resolve, delay));
@@ -86,12 +94,32 @@ export const translateTexts = async (
         throw lastError;
     };
 
+    // 개수 불일치 시 배치를 절반으로 나눠 재시도(재귀). 단일 항목까지 내려가도 안 맞으면 원문 유지.
+    const translateBatchResilient = async (batch: string[]): Promise<string[]> => {
+        try {
+            return await runBatchWithRetry(batch);
+        } catch (error) {
+            if (!isCountMismatchError(error)) throw error;
+            if (batch.length <= 1) {
+                console.warn('[translate] 단일 항목 개수 불일치 → 원문 유지');
+                return batch;
+            }
+            const mid = Math.ceil(batch.length / 2);
+            console.warn(`[translate] 항목 개수 불일치 → 배치 ${batch.length}개를 ${mid}/${batch.length - mid}로 분할 재시도`);
+            const [left, right] = await Promise.all([
+                translateBatchResilient(batch.slice(0, mid)),
+                translateBatchResilient(batch.slice(mid)),
+            ]);
+            return [...left, ...right];
+        }
+    };
+
     const workerCount = Math.min(CONCURRENCY, batches.length);
     const workers = Array.from({ length: workerCount }, async () => {
         while (true) {
             const idx = nextBatchIdx++;
             if (idx >= batches.length) break;
-            results[idx] = await runBatchWithRetry(batches[idx]);
+            results[idx] = await translateBatchResilient(batches[idx]);
             completedBatches++;
             if (onProgress) onProgress(completedBatches, batches.length);
         }

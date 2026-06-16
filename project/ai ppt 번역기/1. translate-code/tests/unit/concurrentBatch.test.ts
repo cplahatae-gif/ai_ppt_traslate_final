@@ -100,6 +100,57 @@ describe('translateTexts — concurrent batch processing', () => {
         expect(attempts).toBeGreaterThanOrEqual(2);
     }, 15000); // 2s × 1 attempt backoff + buffer
 
+    it('splits a batch when the provider drops items (count mismatch)', async () => {
+        const calls: number[] = [];
+        // Mimics an LLM that merges/drops one item on multi-item batches but is exact on singles
+        mockedGetTranslateBatch.mockResolvedValue(async (batch: string[]) => {
+            calls.push(batch.length);
+            if (batch.length > 1) {
+                const got = batch.slice(0, batch.length - 1).map(t => t.toUpperCase());
+                throw new Error(`Expected ${batch.length} items, received ${got.length}`);
+            }
+            return batch.map(t => t.toUpperCase());
+        });
+
+        const inputs = ['a', 'b', 'c', 'd'];
+        const result = await translateTexts(
+            inputs,
+            undefined,
+            undefined,
+            undefined,
+            4, // single batch of 4 → must bisect down to singles
+            'test-key',
+            'gemini',
+            'gemini-2.5-flash'
+        );
+
+        // Every item translated and order preserved despite the drops
+        expect(result).toEqual(['A', 'B', 'C', 'D']);
+        // Bisection eventually used single-item batches
+        expect(calls).toContain(1);
+    });
+
+    it('keeps original text when a single item still mismatches', async () => {
+        // Provider always reports a count mismatch, even for singles → cannot align
+        mockedGetTranslateBatch.mockResolvedValue(async (batch: string[]) => {
+            throw new Error(`Expected ${batch.length} items, received 0`);
+        });
+
+        const result = await translateTexts(
+            ['solo'],
+            undefined,
+            undefined,
+            undefined,
+            1,
+            'test-key',
+            'gemini',
+            'gemini-2.5-flash'
+        );
+
+        // Pipeline survives by falling back to the original text
+        expect(result).toEqual(['solo']);
+    });
+
     it('throws categorized error after exhausting retries', async () => {
         mockedGetTranslateBatch.mockResolvedValue(async () => {
             throw new Error('401 unauthorized');
