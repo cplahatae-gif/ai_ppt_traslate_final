@@ -4,16 +4,23 @@
 
 - 실제 앱: `project/ai ppt 번역기/1. translate-code/` (Vite + React + TypeScript)
 - 배포: Vercel (`npx vercel --prod --yes`)
-- 브랜치: 개발은 `v2-update`, 배포는 `main`에 머지
+- 브랜치: 작업은 feature 브랜치(`feat/<topic>` 또는 `v2-update`)에서, 통합은 PR로 main에 머지
 
-## 배포 워크플로우
+## 배포 워크플로우 (2026-05-09 변경: PR 필수)
+
+> **main 브랜치 직접 push 금지.** 모든 변경은 PR을 통해 머지한다.
 
 ```
-코드 수정 → git commit → git push v2-update
-→ git checkout main && git merge v2-update --no-ff
-→ git push origin main
-→ cd "project/ai ppt 번역기/1. translate-code" && npx vercel --prod --yes
+1. 새 브랜치 생성: git checkout -b feat/<topic>
+2. 코드 수정 → git commit
+3. git push -u origin feat/<topic>
+4. gh pr create --base main --title "..." --body "..."
+5. PR 머지 (gh pr merge --squash 또는 web UI)
+6. git checkout main && git pull
+7. cd "project/ai ppt 번역기/1. translate-code" && npx vercel --prod --yes
 ```
+
+**예외 없음** — hotfix도 PR로 처리한다. PR 본문에 변경 요약, 영향 범위, 검증 방법을 기재한다.
 
 ## 배포 후 필수 검증 (browse 스킬로 직접 테스트)
 
